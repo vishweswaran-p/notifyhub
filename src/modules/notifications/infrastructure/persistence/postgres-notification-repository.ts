@@ -12,6 +12,7 @@ type NotificationRow = {
   id: string;
   tenant_id: string;
   idempotency_key: string | null;
+  template_id: string | null;
   channel: Notification['channel'];
   recipient: string;
   subject: string | null;
@@ -54,6 +55,7 @@ export class PostgresNotificationRepository implements NotificationRepository {
         insert into notifications (
           tenant_id,
           idempotency_key,
+          template_id,
           channel,
           recipient,
           subject,
@@ -64,11 +66,12 @@ export class PostgresNotificationRepository implements NotificationRepository {
           scheduled_at,
           queued_at
         )
-        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+        values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         returning
           id,
           tenant_id,
           idempotency_key,
+          template_id,
           channel,
           recipient,
           subject,
@@ -88,6 +91,7 @@ export class PostgresNotificationRepository implements NotificationRepository {
       [
         input.tenantId,
         input.idempotencyKey,
+        input.templateId,
         input.channel,
         input.recipient,
         input.subject,
@@ -286,6 +290,7 @@ const notificationColumns = `
   id,
   tenant_id,
   idempotency_key,
+  template_id,
   channel,
   recipient,
   subject,
@@ -318,6 +323,7 @@ function mapNotificationRow(row: NotificationRow): Notification {
     id: row.id,
     tenantId: row.tenant_id,
     idempotencyKey: row.idempotency_key,
+    templateId: row.template_id,
     channel: row.channel,
     recipient: row.recipient,
     subject: row.subject,

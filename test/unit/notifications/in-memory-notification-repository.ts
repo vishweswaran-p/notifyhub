@@ -18,6 +18,7 @@ export class InMemoryNotificationRepository implements NotificationRepository {
       id: randomUUID(),
       tenantId: input.tenantId,
       idempotencyKey: input.idempotencyKey,
+      templateId: input.templateId,
       channel: input.channel,
       recipient: input.recipient,
       subject: input.subject,

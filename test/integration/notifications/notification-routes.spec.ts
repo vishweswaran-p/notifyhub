@@ -8,13 +8,16 @@ import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/applica
 import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
 import { GetCurrentTenantUseCase } from '../../../src/modules/identity/application/get-current-tenant-use-case.js';
 import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
+import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
+import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
 import { registerNotificationRoutes } from '../../../src/modules/notifications/interfaces/http/notification-routes.js';
 import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
 
 import { InMemoryIdentityRepository } from '../../unit/identity/in-memory-identity-repository.js';
 import { FakeNotificationQueuePublisher } from '../../unit/notifications/fake-notification-queue-publisher.js';
 import { InMemoryNotificationRepository } from '../../unit/notifications/in-memory-notification-repository.js';
+import { InMemoryNotificationTemplateRepository } from '../../unit/notifications/in-memory-notification-template-repository.js';
 
 describe('notification routes', () => {
   let app: FastifyInstance;
@@ -23,6 +26,7 @@ describe('notification routes', () => {
   beforeEach(async () => {
     const identityRepository = new InMemoryIdentityRepository();
     const notificationRepository = new InMemoryNotificationRepository();
+    const notificationTemplateRepository = new InMemoryNotificationTemplateRepository();
     queuePublisher = new FakeNotificationQueuePublisher();
     const apiKeySecretService = new ApiKeySecretService(
       'test-pepper-with-enough-entropy-for-hashing',
@@ -46,8 +50,13 @@ describe('notification routes', () => {
     });
     registerNotificationRoutes(app, {
       authenticateApiKeyUseCase,
+      createNotificationTemplateUseCase: new CreateNotificationTemplateUseCase(
+        notificationTemplateRepository,
+      ),
       createNotificationUseCase: new CreateNotificationUseCase(
         notificationRepository,
+        notificationTemplateRepository,
+        new TemplateRenderer(),
         queuePublisher,
       ),
     });
@@ -121,6 +130,51 @@ describe('notification routes', () => {
       first.json<{ notification: { id: string } }>().notification.id,
     );
     expect(queuePublisher.jobs).toHaveLength(1);
+  });
+
+  it('creates a template and renders a notification from it', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    const templateResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/templates',
+      headers: {
+        'x-api-key': apiKey,
+      },
+      payload: {
+        name: 'Welcome email',
+        channel: 'email',
+        subjectTemplate: 'Welcome {{name}}',
+        bodyTemplate: 'Hello {{name}}',
+      },
+    });
+    const templateId = templateResponse.json<{ template: { id: string } }>().template.id;
+
+    const notificationResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/notifications',
+      headers: {
+        'x-api-key': apiKey,
+        'idempotency-key': 'template-http-key',
+      },
+      payload: {
+        channel: 'email',
+        recipient: 'user@example.com',
+        templateId,
+        variables: {
+          name: 'Vishnu',
+        },
+      },
+    });
+
+    expect(templateResponse.statusCode).toBe(201);
+    expect(notificationResponse.statusCode).toBe(202);
+    expect(notificationResponse.json()).toMatchObject({
+      notification: {
+        templateId,
+        subject: 'Welcome Vishnu',
+        body: 'Hello Vishnu',
+      },
+    });
   });
 
   it('rejects unauthenticated notification commands', async () => {

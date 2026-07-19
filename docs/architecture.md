@@ -70,7 +70,15 @@ The fifth phase adds retry and dead-letter behavior:
 - Final exhausted failures transition notifications to `dead_lettered`.
 - Last provider error metadata is stored on the notification record.
 
-Templates, rate limiting, and analytics modules will be implemented incrementally after this retry foundation is stable.
+The sixth phase adds notification templates:
+
+- Tenant-authenticated `POST /v1/templates`.
+- Channel-specific subject/body templates.
+- `{{variable}}` placeholder rendering during notification intake.
+- Missing variable validation before enqueueing.
+- Notifications persist rendered subject/body snapshots plus the source template id.
+
+Rate limiting and analytics modules will be implemented incrementally after this template foundation is stable.
 
 ## Identity Flow
 
@@ -115,6 +123,28 @@ sequenceDiagram
     API->>Queue: Enqueue notification-delivery job
     API-->>Client: 202 Accepted + idempotentReplay=false
   end
+```
+
+## Template Rendering Flow
+
+```mermaid
+sequenceDiagram
+  participant Client as Tenant App
+  participant API as Fastify API
+  participant DB as PostgreSQL
+  participant Queue as BullMQ
+
+  Client->>API: POST /v1/templates
+  API->>DB: Persist tenant template
+  DB-->>API: Template
+  API-->>Client: 201 Created
+
+  Client->>API: POST /v1/notifications with templateId + variables
+  API->>DB: Load template for tenant
+  API->>API: Render {{variables}}
+  API->>DB: Persist rendered notification snapshot
+  API->>Queue: Enqueue delivery job
+  API-->>Client: 202 Accepted
 ```
 
 ## Delivery Worker Flow

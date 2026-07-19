@@ -14,6 +14,7 @@ describe('DeliverNotificationUseCase', () => {
     const notification = await repository.create({
       tenantId,
       idempotencyKey: 'delivery-success',
+      templateId: null,
       channel: 'email',
       recipient: 'user@example.com',
       subject: 'Welcome',
@@ -49,6 +50,7 @@ describe('DeliverNotificationUseCase', () => {
     const notification = await repository.create({
       tenantId,
       idempotencyKey: 'delivery-failure',
+      templateId: null,
       channel: 'sms',
       recipient: 'fail-user',
       subject: null,
@@ -87,6 +89,7 @@ describe('DeliverNotificationUseCase', () => {
     const notification = await repository.create({
       tenantId,
       idempotencyKey: 'delivery-dead-letter',
+      templateId: null,
       channel: 'webhook',
       recipient: 'https://fail.example.com/webhook',
       subject: null,
@@ -125,6 +128,7 @@ describe('DeliverNotificationUseCase', () => {
     const notification = await repository.create({
       tenantId,
       idempotencyKey: 'delivery-skip',
+      templateId: null,
       channel: 'push',
       recipient: 'device-token',
       subject: null,

@@ -8,6 +8,7 @@ import type { DeliveryAttempt } from '../domain/delivery-attempt.js';
 export type CreateNotificationInput = {
   tenantId: string;
   idempotencyKey: string | null;
+  templateId: string | null;
   channel: NotificationChannel;
   recipient: string;
   subject: string | null;

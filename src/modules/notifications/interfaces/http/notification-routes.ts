@@ -8,13 +8,19 @@ import {
 
 import type { AuthenticateApiKeyUseCase } from '../../../identity/application/authenticate-api-key-use-case.js';
 import type {
+  CreateNotificationTemplateCommand,
+  CreateNotificationTemplateUseCase,
+} from '../../application/create-notification-template-use-case.js';
+import type {
   CreateNotificationCommand,
   CreateNotificationUseCase,
 } from '../../application/create-notification-use-case.js';
 import type { Notification } from '../../domain/notification.js';
+import type { NotificationTemplate } from '../../domain/notification-template.js';
 
 type RegisterNotificationRoutesDependencies = {
   authenticateApiKeyUseCase: AuthenticateApiKeyUseCase;
+  createNotificationTemplateUseCase: CreateNotificationTemplateUseCase;
   createNotificationUseCase: CreateNotificationUseCase;
 };
 
@@ -23,6 +29,33 @@ export function registerNotificationRoutes(
   dependencies: RegisterNotificationRoutesDependencies,
 ): void {
   const requireTenantAuth = createRequireTenantAuth(dependencies);
+
+  app.post<{ Body: CreateNotificationTemplateCommand }>(
+    '/v1/templates',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Templates'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        body: createTemplateBodySchema,
+        response: {
+          201: templateResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const template = await dependencies.createNotificationTemplateUseCase.execute({
+        principal: requireAuth(request),
+        command: request.body,
+      });
+
+      reply.status(201);
+
+      return {
+        template: serializeTemplate(template),
+      };
+    },
+  );
 
   app.post<{ Body: CreateNotificationCommand; Headers: { 'idempotency-key'?: string } }>(
     '/v1/notifications',
@@ -78,6 +111,7 @@ function serializeNotification(notification: Notification): Record<string, unkno
   return {
     id: notification.id,
     tenantId: notification.tenantId,
+    templateId: notification.templateId,
     channel: notification.channel,
     recipient: notification.recipient,
     subject: notification.subject,
@@ -96,6 +130,19 @@ function serializeNotification(notification: Notification): Record<string, unkno
   };
 }
 
+function serializeTemplate(template: NotificationTemplate): Record<string, unknown> {
+  return {
+    id: template.id,
+    tenantId: template.tenantId,
+    name: template.name,
+    channel: template.channel,
+    subjectTemplate: template.subjectTemplate,
+    bodyTemplate: template.bodyTemplate,
+    createdAt: template.createdAt.toISOString(),
+    updatedAt: template.updatedAt.toISOString(),
+  };
+}
+
 const notificationHeadersSchema = {
   type: 'object',
   properties: {
@@ -105,11 +152,12 @@ const notificationHeadersSchema = {
 
 const createNotificationBodySchema = {
   type: 'object',
-  required: ['channel', 'recipient', 'body'],
+  required: ['channel', 'recipient'],
   additionalProperties: false,
   properties: {
     channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
     recipient: { type: 'string', minLength: 1, maxLength: 512 },
+    templateId: { type: 'string', format: 'uuid' },
     subject: { type: 'string', minLength: 1, maxLength: 255 },
     body: { type: 'string', minLength: 1, maxLength: 10000 },
     variables: { type: 'object', additionalProperties: true, default: {} },
@@ -123,6 +171,7 @@ const notificationSchema = {
   required: [
     'id',
     'tenantId',
+    'templateId',
     'channel',
     'recipient',
     'subject',
@@ -142,6 +191,7 @@ const notificationSchema = {
   properties: {
     id: { type: 'string', format: 'uuid' },
     tenantId: { type: 'string', format: 'uuid' },
+    templateId: { type: ['string', 'null'], format: 'uuid' },
     channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
     recipient: { type: 'string' },
     subject: { type: ['string', 'null'] },
@@ -169,5 +219,49 @@ const notificationResponseSchema = {
   properties: {
     notification: notificationSchema,
     idempotentReplay: { type: 'boolean' },
+  },
+} as const;
+
+const createTemplateBodySchema = {
+  type: 'object',
+  required: ['name', 'channel', 'bodyTemplate'],
+  additionalProperties: false,
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 120 },
+    channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
+    subjectTemplate: { type: 'string', minLength: 1, maxLength: 255 },
+    bodyTemplate: { type: 'string', minLength: 1, maxLength: 10000 },
+  },
+} as const;
+
+const templateSchema = {
+  type: 'object',
+  required: [
+    'id',
+    'tenantId',
+    'name',
+    'channel',
+    'subjectTemplate',
+    'bodyTemplate',
+    'createdAt',
+    'updatedAt',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    tenantId: { type: 'string', format: 'uuid' },
+    name: { type: 'string' },
+    channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
+    subjectTemplate: { type: ['string', 'null'] },
+    bodyTemplate: { type: 'string' },
+    createdAt: { type: 'string', format: 'date-time' },
+    updatedAt: { type: 'string', format: 'date-time' },
+  },
+} as const;
+
+const templateResponseSchema = {
+  type: 'object',
+  required: ['template'],
+  properties: {
+    template: templateSchema,
   },
 } as const;

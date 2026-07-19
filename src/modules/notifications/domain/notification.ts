@@ -7,6 +7,7 @@ export type Notification = {
   id: string;
   tenantId: string;
   idempotencyKey: string | null;
+  templateId: string | null;
   channel: NotificationChannel;
   recipient: string;
   subject: string | null;

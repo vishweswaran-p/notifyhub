@@ -15,7 +15,10 @@ import { CreateTenantUseCase } from '../../modules/identity/application/create-t
 import { GetCurrentTenantUseCase } from '../../modules/identity/application/get-current-tenant-use-case.js';
 import { PostgresIdentityRepository } from '../../modules/identity/infrastructure/persistence/postgres-identity-repository.js';
 import { registerIdentityRoutes } from '../../modules/identity/interfaces/http/identity-routes.js';
+import { CreateNotificationTemplateUseCase } from '../../modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../modules/notifications/application/create-notification-use-case.js';
+import { TemplateRenderer } from '../../modules/notifications/application/template-renderer.js';
+import { PostgresNotificationTemplateRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-template-repository.js';
 import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
 import { BullMqNotificationQueuePublisher } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js';
 import { registerNotificationRoutes } from '../../modules/notifications/interfaces/http/notification-routes.js';
@@ -43,6 +46,8 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
     retryBackoffMs: config.DELIVERY_RETRY_BACKOFF_MS,
   });
   const notificationRepository = new PostgresNotificationRepository(appPool);
+  const notificationTemplateRepository = new PostgresNotificationTemplateRepository(appPool);
+  const templateRenderer = new TemplateRenderer();
 
   registerErrorHandler(app);
 
@@ -99,8 +104,13 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
   });
   registerNotificationRoutes(app, {
     authenticateApiKeyUseCase,
+    createNotificationTemplateUseCase: new CreateNotificationTemplateUseCase(
+      notificationTemplateRepository,
+    ),
     createNotificationUseCase: new CreateNotificationUseCase(
       notificationRepository,
+      notificationTemplateRepository,
+      templateRenderer,
       notificationQueuePublisher,
     ),
   });
