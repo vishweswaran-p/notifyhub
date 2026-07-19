@@ -22,6 +22,7 @@ const deliveryWorker = new NotificationDeliveryWorker({
   deliverNotificationUseCase: new DeliverNotificationUseCase(
     notificationRepository,
     providerRegistry,
+    config.DELIVERY_MAX_ATTEMPTS,
   ),
   logger,
 });

@@ -10,11 +10,21 @@ import { parseRedisConnectionOptions } from '../../../../shared/queue/redis-conn
 export class BullMqNotificationQueuePublisher implements NotificationQueuePublisher {
   private readonly queue: Queue<NotificationDeliveryJobPayload>;
 
-  public constructor(redisUrl: string) {
+  public constructor(
+    redisUrl: string,
+    options: {
+      maxAttempts: number;
+      retryBackoffMs: number;
+    },
+  ) {
     this.queue = new Queue<NotificationDeliveryJobPayload>(notificationDeliveryQueueName, {
       connection: parseRedisConnectionOptions(redisUrl),
       defaultJobOptions: {
-        attempts: 1,
+        attempts: options.maxAttempts,
+        backoff: {
+          type: 'exponential',
+          delay: options.retryBackoffMs,
+        },
         removeOnComplete: 1_000,
         removeOnFail: false,
       },

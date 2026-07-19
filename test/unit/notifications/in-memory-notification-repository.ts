@@ -28,6 +28,9 @@ export class InMemoryNotificationRepository implements NotificationRepository {
       scheduledAt: input.scheduledAt,
       acceptedAt: now,
       queuedAt: input.queuedAt,
+      deadLetteredAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -66,8 +69,22 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     return Promise.resolve(this.updateStatus(id, tenantId, 'delivered', ['processing']));
   }
 
-  public markFailed(id: string, tenantId: string): Promise<Notification | null> {
-    return Promise.resolve(this.updateStatus(id, tenantId, 'failed', ['processing']));
+  public markFailed(
+    id: string,
+    tenantId: string,
+    error: { errorCode: string; errorMessage: string },
+  ): Promise<Notification | null> {
+    return Promise.resolve(this.updateStatus(id, tenantId, 'failed', ['processing'], error));
+  }
+
+  public markDeadLettered(
+    id: string,
+    tenantId: string,
+    error: { errorCode: string; errorMessage: string },
+  ): Promise<Notification | null> {
+    return Promise.resolve(
+      this.updateStatus(id, tenantId, 'dead_lettered', ['processing', 'failed'], error, new Date()),
+    );
   }
 
   public nextAttemptNumber(notificationId: string): Promise<number> {
@@ -105,6 +122,8 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     tenantId: string,
     status: Notification['status'],
     allowedStatuses: Notification['status'][],
+    error?: { errorCode: string; errorMessage: string },
+    deadLetteredAt?: Date,
   ): Notification | null {
     const notification = this.notifications.get(id);
 
@@ -119,6 +138,11 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     const updated: Notification = {
       ...notification,
       status,
+      deadLetteredAt: deadLetteredAt ?? notification.deadLetteredAt,
+      lastErrorCode:
+        status === 'delivered' ? null : (error?.errorCode ?? notification.lastErrorCode),
+      lastErrorMessage:
+        status === 'delivered' ? null : (error?.errorMessage ?? notification.lastErrorMessage),
       updatedAt: new Date(),
     };
 

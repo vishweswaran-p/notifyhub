@@ -17,6 +17,9 @@ export type Notification = {
   scheduledAt: Date | null;
   acceptedAt: Date;
   queuedAt: Date | null;
+  deadLetteredAt: Date | null;
+  lastErrorCode: string | null;
+  lastErrorMessage: string | null;
   createdAt: Date;
   updatedAt: Date;
 };

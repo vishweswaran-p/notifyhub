@@ -16,6 +16,15 @@ export type DeliverNotificationResult =
       notificationId: string;
       provider: string;
       errorCode: string;
+      attemptNumber: number;
+      shouldRetry: true;
+    }
+  | {
+      outcome: 'dead_lettered';
+      notificationId: string;
+      provider: string;
+      errorCode: string;
+      attemptNumber: number;
     }
   | {
       outcome: 'skipped';
@@ -27,6 +36,7 @@ export class DeliverNotificationUseCase {
   public constructor(
     private readonly repository: NotificationRepository,
     private readonly providerRegistry: NotificationProviderRegistry,
+    private readonly maxAttempts: number,
   ) {}
 
   public async execute(
@@ -53,11 +63,11 @@ export class DeliverNotificationUseCase {
       };
     }
 
-    if (notification.status === 'delivered') {
+    if (notification.status === 'delivered' || notification.status === 'dead_lettered') {
       return {
         outcome: 'skipped',
         notificationId: notification.id,
-        reason: 'already_delivered',
+        reason: `already_${notification.status}`,
       };
     }
 
@@ -118,8 +128,20 @@ export class DeliverNotificationUseCase {
     } catch (error) {
       const completedAt = new Date();
       const normalizedError = normalizeProviderError(error);
+      const finalAttempt = attemptNumber >= this.maxAttempts;
 
-      await this.repository.markFailed(notification.id, notification.tenantId);
+      if (finalAttempt) {
+        await this.repository.markDeadLettered(notification.id, notification.tenantId, {
+          errorCode: normalizedError.code,
+          errorMessage: normalizedError.message,
+        });
+      } else {
+        await this.repository.markFailed(notification.id, notification.tenantId, {
+          errorCode: normalizedError.code,
+          errorMessage: normalizedError.message,
+        });
+      }
+
       await this.repository.recordDeliveryAttempt({
         notificationId: notification.id,
         tenantId: notification.tenantId,
@@ -135,11 +157,23 @@ export class DeliverNotificationUseCase {
         completedAt,
       });
 
+      if (finalAttempt) {
+        return {
+          outcome: 'dead_lettered',
+          notificationId: notification.id,
+          provider: provider.name,
+          errorCode: normalizedError.code,
+          attemptNumber,
+        };
+      }
+
       return {
         outcome: 'failed',
         notificationId: notification.id,
         provider: provider.name,
         errorCode: normalizedError.code,
+        attemptNumber,
+        shouldRetry: true,
       };
     }
   }

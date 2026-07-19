@@ -38,7 +38,10 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
     identityRepository,
     apiKeySecretService,
   );
-  const notificationQueuePublisher = new BullMqNotificationQueuePublisher(config.REDIS_URL);
+  const notificationQueuePublisher = new BullMqNotificationQueuePublisher(config.REDIS_URL, {
+    maxAttempts: config.DELIVERY_MAX_ATTEMPTS,
+    retryBackoffMs: config.DELIVERY_RETRY_BACKOFF_MS,
+  });
   const notificationRepository = new PostgresNotificationRepository(appPool);
 
   registerErrorHandler(app);

@@ -62,7 +62,15 @@ The fourth phase adds delivery processing:
 - Notification state transitions from queued/scheduled to processing, delivered, or failed.
 - Append-only delivery attempt history with provider metadata and errors.
 
-Retry policies, dead-letter handling, templates, rate limiting, and analytics modules will be implemented incrementally after this delivery foundation is stable.
+The fifth phase adds retry and dead-letter behavior:
+
+- Environment-driven delivery max attempts and exponential backoff.
+- BullMQ retries for retryable provider failures.
+- Durable failed state between attempts.
+- Final exhausted failures transition notifications to `dead_lettered`.
+- Last provider error metadata is stored on the notification record.
+
+Templates, rate limiting, and analytics modules will be implemented incrementally after this retry foundation is stable.
 
 ## Identity Flow
 
@@ -127,9 +135,15 @@ sequenceDiagram
     Provider-->>Worker: Provider message id
     Worker->>DB: Mark notification delivered
     Worker->>DB: Record delivered attempt
-  else Provider rejects
+  else Provider rejects with attempts remaining
     Provider-->>Worker: Provider error
     Worker->>DB: Mark notification failed
+    Worker->>DB: Record failed attempt
+    Worker-->>Queue: Throw retryable error
+    Queue-->>Worker: Retry after exponential backoff
+  else Provider rejects on final attempt
+    Provider-->>Worker: Provider error
+    Worker->>DB: Mark notification dead_lettered
     Worker->>DB: Record failed attempt
   end
 ```

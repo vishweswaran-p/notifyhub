@@ -10,6 +10,8 @@ describe('loadConfig', () => {
     expect(config.API_PORT).toBe(3000);
     expect(config.DATABASE_URL).toBe('postgres://notifyhub:notifyhub@localhost:5432/notifyhub');
     expect(config.JWT_EXPIRES_IN_SECONDS).toBe(900);
+    expect(config.DELIVERY_MAX_ATTEMPTS).toBe(3);
+    expect(config.DELIVERY_RETRY_BACKOFF_MS).toBe(5000);
   });
 
   it('rejects default secrets in production', () => {

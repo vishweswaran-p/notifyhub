@@ -21,6 +21,8 @@ const environmentSchema = z
     JWT_SECRET: z.string().min(32).default(defaultDevelopmentJwtSecret),
     JWT_EXPIRES_IN_SECONDS: z.coerce.number().int().positive().default(900),
     API_KEY_PEPPER: z.string().min(32).default(defaultDevelopmentApiKeyPepper),
+    DELIVERY_MAX_ATTEMPTS: z.coerce.number().int().positive().max(20).default(3),
+    DELIVERY_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(5_000),
     CORS_ORIGIN: z.string().default('*'),
   })
   .superRefine((env, context) => {

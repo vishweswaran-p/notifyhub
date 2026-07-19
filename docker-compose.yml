@@ -40,6 +40,8 @@ services:
       JWT_SECRET: local-compose-secret-change-before-production
       JWT_EXPIRES_IN_SECONDS: 900
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
+      DELIVERY_MAX_ATTEMPTS: 3
+      DELIVERY_RETRY_BACKOFF_MS: 5000
       CORS_ORIGIN: '*'
     ports:
       - '3000:3000'
@@ -63,6 +65,8 @@ services:
       JWT_SECRET: local-compose-secret-change-before-production
       JWT_EXPIRES_IN_SECONDS: 900
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
+      DELIVERY_MAX_ATTEMPTS: 3
+      DELIVERY_RETRY_BACKOFF_MS: 5000
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,6 +87,8 @@ services:
       JWT_SECRET: local-compose-secret-change-before-production
       JWT_EXPIRES_IN_SECONDS: 900
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
+      DELIVERY_MAX_ATTEMPTS: 3
+      DELIVERY_RETRY_BACKOFF_MS: 5000
     depends_on:
       postgres:
         condition: service_healthy

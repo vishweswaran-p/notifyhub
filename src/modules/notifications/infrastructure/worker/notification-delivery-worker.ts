@@ -35,6 +35,12 @@ export class NotificationDeliveryWorker {
           'Processed notification delivery job.',
         );
 
+        if (result.outcome === 'failed' && result.shouldRetry) {
+          throw new Error(
+            `Retrying notification ${result.notificationId} after provider failure ${result.errorCode}.`,
+          );
+        }
+
         return result;
       },
       {

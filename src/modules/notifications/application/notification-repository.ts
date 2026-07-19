@@ -28,7 +28,16 @@ export interface NotificationRepository {
   ): Promise<Notification | null>;
   markProcessing(id: string, tenantId: string): Promise<Notification | null>;
   markDelivered(id: string, tenantId: string): Promise<Notification | null>;
-  markFailed(id: string, tenantId: string): Promise<Notification | null>;
+  markFailed(
+    id: string,
+    tenantId: string,
+    error: NotificationFailureMetadata,
+  ): Promise<Notification | null>;
+  markDeadLettered(
+    id: string,
+    tenantId: string,
+    error: NotificationFailureMetadata,
+  ): Promise<Notification | null>;
   nextAttemptNumber(notificationId: string): Promise<number>;
   recordDeliveryAttempt(input: RecordDeliveryAttemptInput): Promise<DeliveryAttempt>;
 }
@@ -46,4 +55,9 @@ export type RecordDeliveryAttemptInput = {
   responseMetadata: Record<string, unknown>;
   startedAt: Date;
   completedAt: Date | null;
+};
+
+export type NotificationFailureMetadata = {
+  errorCode: string;
+  errorMessage: string;
 };

@@ -24,7 +24,7 @@ describe('DeliverNotificationUseCase', () => {
       scheduledAt: null,
       queuedAt: new Date(),
     });
-    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry());
+    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry(), 3);
 
     const result = await useCase.execute({
       notificationId: notification.id,
@@ -59,7 +59,7 @@ describe('DeliverNotificationUseCase', () => {
       scheduledAt: null,
       queuedAt: new Date(),
     });
-    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry());
+    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry(), 3);
 
     const result = await useCase.execute({
       notificationId: notification.id,
@@ -72,12 +72,52 @@ describe('DeliverNotificationUseCase', () => {
       notificationId: notification.id,
       provider: 'mock-sms',
       errorCode: 'MOCK_PROVIDER_REJECTED',
+      attemptNumber: 1,
+      shouldRetry: true,
     });
     expect(repository.notifications.get(notification.id)?.status).toBe('failed');
     expect(repository.deliveryAttempts.at(-1)).toMatchObject({
       status: 'failed',
       errorCode: 'MOCK_PROVIDER_REJECTED',
     });
+  });
+
+  it('moves notification to the dead letter queue on the final failed attempt', async () => {
+    const repository = new InMemoryNotificationRepository();
+    const notification = await repository.create({
+      tenantId,
+      idempotencyKey: 'delivery-dead-letter',
+      channel: 'webhook',
+      recipient: 'https://fail.example.com/webhook',
+      subject: null,
+      body: '{}',
+      variables: {},
+      metadata: {},
+      status: 'queued',
+      scheduledAt: null,
+      queuedAt: new Date(),
+    });
+    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry(), 1);
+
+    const result = await useCase.execute({
+      notificationId: notification.id,
+      tenantId,
+      channel: 'webhook',
+    });
+
+    expect(result).toEqual({
+      outcome: 'dead_lettered',
+      notificationId: notification.id,
+      provider: 'mock-webhook',
+      errorCode: 'MOCK_PROVIDER_REJECTED',
+      attemptNumber: 1,
+    });
+    expect(repository.notifications.get(notification.id)).toMatchObject({
+      status: 'dead_lettered',
+      lastErrorCode: 'MOCK_PROVIDER_REJECTED',
+      lastErrorMessage: 'Mock provider rejected recipient.',
+    });
+    expect(repository.notifications.get(notification.id)?.deadLetteredAt).toBeInstanceOf(Date);
   });
 
   it('skips delivery when the queue payload does not match persisted channel', async () => {
@@ -95,7 +135,7 @@ describe('DeliverNotificationUseCase', () => {
       scheduledAt: null,
       queuedAt: new Date(),
     });
-    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry());
+    const useCase = new DeliverNotificationUseCase(repository, createProviderRegistry(), 3);
 
     const result = await useCase.execute({
       notificationId: notification.id,

@@ -22,6 +22,9 @@ type NotificationRow = {
   scheduled_at: Date | null;
   accepted_at: Date;
   queued_at: Date | null;
+  dead_lettered_at: Date | null;
+  last_error_code: string | null;
+  last_error_message: string | null;
   created_at: Date;
   updated_at: Date;
 };
@@ -76,6 +79,9 @@ export class PostgresNotificationRepository implements NotificationRepository {
           scheduled_at,
           accepted_at,
           queued_at,
+          dead_lettered_at,
+          last_error_code,
+          last_error_message,
           created_at,
           updated_at
       `,
@@ -146,12 +152,32 @@ export class PostgresNotificationRepository implements NotificationRepository {
     });
   }
 
-  public async markFailed(id: string, tenantId: string): Promise<Notification | null> {
+  public async markFailed(
+    id: string,
+    tenantId: string,
+    error: { errorCode: string; errorMessage: string },
+  ): Promise<Notification | null> {
     return this.updateStatus({
       id,
       tenantId,
       status: 'failed',
       allowedStatuses: ['processing'],
+      error,
+    });
+  }
+
+  public async markDeadLettered(
+    id: string,
+    tenantId: string,
+    error: { errorCode: string; errorMessage: string },
+  ): Promise<Notification | null> {
+    return this.updateStatus({
+      id,
+      tenantId,
+      status: 'dead_lettered',
+      allowedStatuses: ['processing', 'failed'],
+      error,
+      deadLetteredAt: new Date(),
     });
   }
 
@@ -225,15 +251,30 @@ export class PostgresNotificationRepository implements NotificationRepository {
     tenantId: string;
     status: Notification['status'];
     allowedStatuses: Notification['status'][];
+    error?: { errorCode: string; errorMessage: string };
+    deadLetteredAt?: Date;
   }): Promise<Notification | null> {
     const result = await this.pool.query<NotificationRow>(
       `
         update notifications
-        set status = $3, updated_at = now()
+        set
+          status = $3,
+          last_error_code = case when $3 = 'delivered' then null else coalesce($5, last_error_code) end,
+          last_error_message = case when $3 = 'delivered' then null else coalesce($6, last_error_message) end,
+          dead_lettered_at = coalesce($7, dead_lettered_at),
+          updated_at = now()
         where id = $1 and tenant_id = $2 and status = any($4::text[])
         returning ${notificationColumns}
       `,
-      [params.id, params.tenantId, params.status, params.allowedStatuses],
+      [
+        params.id,
+        params.tenantId,
+        params.status,
+        params.allowedStatuses,
+        params.error?.errorCode ?? null,
+        params.error?.errorMessage ?? null,
+        params.deadLetteredAt ?? null,
+      ],
     );
 
     const row = result.rows[0];
@@ -255,6 +296,9 @@ const notificationColumns = `
   scheduled_at,
   accepted_at,
   queued_at,
+  dead_lettered_at,
+  last_error_code,
+  last_error_message,
   created_at,
   updated_at
 `;
@@ -284,6 +328,9 @@ function mapNotificationRow(row: NotificationRow): Notification {
     scheduledAt: row.scheduled_at,
     acceptedAt: row.accepted_at,
     queuedAt: row.queued_at,
+    deadLetteredAt: row.dead_lettered_at,
+    lastErrorCode: row.last_error_code,
+    lastErrorMessage: row.last_error_message,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
