@@ -4,12 +4,15 @@ import {
   NotificationTemplateChannelMismatchError,
   NotificationTemplateNotFoundError,
 } from './notification-template-errors.js';
+import { NotificationRateLimitExceededError } from './rate-limit/rate-limit-errors.js';
 
 import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
 import type { Notification } from '../domain/notification.js';
 import type { NotificationQueuePublisher } from './notification-queue-publisher.js';
 import type { NotificationRepository } from './notification-repository.js';
 import type { NotificationTemplateRepository } from './notification-template-repository.js';
+import type { TenantNotificationPolicyRepository } from './rate-limit/tenant-notification-policy-repository.js';
+import type { TenantRateLimiter } from './rate-limit/tenant-rate-limiter.js';
 import type { TemplateRenderer } from './template-renderer.js';
 
 const jsonObjectSchema = z.record(z.string(), z.unknown());
@@ -47,6 +50,8 @@ export class CreateNotificationUseCase {
     private readonly repository: NotificationRepository,
     private readonly templateRepository: NotificationTemplateRepository,
     private readonly templateRenderer: TemplateRenderer,
+    private readonly tenantPolicyRepository: TenantNotificationPolicyRepository,
+    private readonly tenantRateLimiter: TenantRateLimiter,
     private readonly queuePublisher: NotificationQueuePublisher,
   ) {}
 
@@ -82,6 +87,9 @@ export class CreateNotificationUseCase {
       body: input.body ?? null,
       variables: input.variables,
     });
+
+    await this.enforceRateLimit(params.principal.tenantId);
+
     const notification = await this.repository.create({
       tenantId: params.principal.tenantId,
       idempotencyKey: params.idempotencyKey,
@@ -110,6 +118,28 @@ export class CreateNotificationUseCase {
       notification,
       idempotentReplay: false,
     };
+  }
+
+  private async enforceRateLimit(tenantId: string): Promise<void> {
+    const policy = await this.tenantPolicyRepository.findByTenantId(tenantId);
+
+    if (!policy) {
+      return;
+    }
+
+    const result = await this.tenantRateLimiter.consume({
+      tenantId,
+      limit: policy.rateLimitPerMinute,
+      windowSeconds: 60,
+    });
+
+    if (!result.allowed) {
+      throw new NotificationRateLimitExceededError({
+        limit: result.limit,
+        remaining: result.remaining,
+        resetAt: result.resetAt,
+      });
+    }
   }
 
   private async resolveContent(params: {

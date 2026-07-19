@@ -20,7 +20,9 @@ import { CreateNotificationUseCase } from '../../modules/notifications/applicati
 import { TemplateRenderer } from '../../modules/notifications/application/template-renderer.js';
 import { PostgresNotificationTemplateRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-template-repository.js';
 import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
+import { PostgresTenantNotificationPolicyRepository } from '../../modules/notifications/infrastructure/persistence/postgres-tenant-notification-policy-repository.js';
 import { BullMqNotificationQueuePublisher } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js';
+import { RedisTenantRateLimiter } from '../../modules/notifications/infrastructure/rate-limit/redis-tenant-rate-limiter.js';
 import { registerNotificationRoutes } from '../../modules/notifications/interfaces/http/notification-routes.js';
 import type { AppConfig } from '../../shared/config/environment.js';
 import { createPostgresPool } from '../../shared/database/postgres.js';
@@ -47,6 +49,10 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
   });
   const notificationRepository = new PostgresNotificationRepository(appPool);
   const notificationTemplateRepository = new PostgresNotificationTemplateRepository(appPool);
+  const tenantNotificationPolicyRepository = new PostgresTenantNotificationPolicyRepository(
+    appPool,
+  );
+  const tenantRateLimiter = new RedisTenantRateLimiter(config.REDIS_URL);
   const templateRenderer = new TemplateRenderer();
 
   registerErrorHandler(app);
@@ -91,6 +97,7 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
   app.addHook('onClose', async () => {
     await healthCheckService.close();
     await notificationQueuePublisher.close();
+    tenantRateLimiter.disconnect();
     await appPool.end();
   });
 
@@ -111,6 +118,8 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
       notificationRepository,
       notificationTemplateRepository,
       templateRenderer,
+      tenantNotificationPolicyRepository,
+      tenantRateLimiter,
       notificationQueuePublisher,
     ),
   });

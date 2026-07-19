@@ -78,7 +78,14 @@ The sixth phase adds notification templates:
 - Missing variable validation before enqueueing.
 - Notifications persist rendered subject/body snapshots plus the source template id.
 
-Rate limiting and analytics modules will be implemented incrementally after this template foundation is stable.
+The seventh phase adds tenant rate limiting:
+
+- Tenant `rate_limit_per_minute` policy is enforced during notification intake.
+- Redis fixed-window counters track accepted notification commands per tenant.
+- Idempotent notification replays return the existing notification without consuming quota.
+- Exceeded limits return `429 NOTIFICATION_RATE_LIMIT_EXCEEDED` before persistence or enqueueing.
+
+Analytics modules will be implemented incrementally after this rate-limit foundation is stable.
 
 ## Identity Flow
 
@@ -119,9 +126,14 @@ sequenceDiagram
     DB-->>API: Existing notification
     API-->>Client: 202 Accepted + idempotentReplay=true
   else New request
+    API->>Redis: Consume tenant notification quota
+    alt Rate limit exceeded
+      API-->>Client: 429 Too Many Requests
+    else Quota available
     API->>DB: Persist notification
     API->>Queue: Enqueue notification-delivery job
     API-->>Client: 202 Accepted + idempotentReplay=false
+    end
   end
 ```
 

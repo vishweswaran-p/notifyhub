@@ -18,16 +18,28 @@ import { InMemoryIdentityRepository } from '../../unit/identity/in-memory-identi
 import { FakeNotificationQueuePublisher } from '../../unit/notifications/fake-notification-queue-publisher.js';
 import { InMemoryNotificationRepository } from '../../unit/notifications/in-memory-notification-repository.js';
 import { InMemoryNotificationTemplateRepository } from '../../unit/notifications/in-memory-notification-template-repository.js';
+import { FakeTenantRateLimiter } from '../../unit/notifications/rate-limit/fake-tenant-rate-limiter.js';
+
+import type { TenantNotificationPolicyRepository } from '../../../src/modules/notifications/application/rate-limit/tenant-notification-policy-repository.js';
 
 describe('notification routes', () => {
   let app: FastifyInstance;
   let queuePublisher: FakeNotificationQueuePublisher;
+  let rateLimiter: FakeTenantRateLimiter;
 
   beforeEach(async () => {
     const identityRepository = new InMemoryIdentityRepository();
     const notificationRepository = new InMemoryNotificationRepository();
     const notificationTemplateRepository = new InMemoryNotificationTemplateRepository();
     queuePublisher = new FakeNotificationQueuePublisher();
+    rateLimiter = new FakeTenantRateLimiter();
+    const tenantPolicyRepository: TenantNotificationPolicyRepository = {
+      findByTenantId: (tenantId) =>
+        Promise.resolve({
+          tenantId,
+          rateLimitPerMinute: 60,
+        }),
+    };
     const apiKeySecretService = new ApiKeySecretService(
       'test-pepper-with-enough-entropy-for-hashing',
     );
@@ -57,6 +69,8 @@ describe('notification routes', () => {
         notificationRepository,
         notificationTemplateRepository,
         new TemplateRenderer(),
+        tenantPolicyRepository,
+        rateLimiter,
         queuePublisher,
       ),
     });
@@ -189,6 +203,37 @@ describe('notification routes', () => {
     });
 
     expect(response.statusCode).toBe(401);
+  });
+
+  it('returns 429 when the tenant notification rate limit is exceeded', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    rateLimiter.nextResult = {
+      allowed: false,
+      limit: 1,
+      remaining: 0,
+      resetAt: new Date(Date.now() + 60_000),
+    };
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/v1/notifications',
+      headers: {
+        'x-api-key': apiKey,
+      },
+      payload: {
+        channel: 'email',
+        recipient: 'user@example.com',
+        body: 'Hello',
+      },
+    });
+
+    expect(response.statusCode).toBe(429);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'NOTIFICATION_RATE_LIMIT_EXCEEDED',
+      },
+    });
+    expect(queuePublisher.jobs).toHaveLength(0);
   });
 });
 
