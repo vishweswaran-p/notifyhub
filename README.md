@@ -4,6 +4,8 @@ NotifyHub is a production-grade, multi-tenant notification platform built as a p
 
 The system is designed to send email, SMS, push, and webhook notifications through a centralized platform. The first implementation uses a modular monolith with separately runnable API, worker, and scheduler processes so the codebase remains simple to operate while preserving clear service boundaries.
 
+Current capabilities include tenant onboarding, API-key/JWT authentication, notification intake, idempotent request handling, and BullMQ enqueueing for future delivery workers.
+
 ## Stack
 
 - Node.js 22 LTS

@@ -15,6 +15,10 @@ import { CreateTenantUseCase } from '../../modules/identity/application/create-t
 import { GetCurrentTenantUseCase } from '../../modules/identity/application/get-current-tenant-use-case.js';
 import { PostgresIdentityRepository } from '../../modules/identity/infrastructure/persistence/postgres-identity-repository.js';
 import { registerIdentityRoutes } from '../../modules/identity/interfaces/http/identity-routes.js';
+import { CreateNotificationUseCase } from '../../modules/notifications/application/create-notification-use-case.js';
+import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
+import { BullMqNotificationQueuePublisher } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js';
+import { registerNotificationRoutes } from '../../modules/notifications/interfaces/http/notification-routes.js';
 import type { AppConfig } from '../../shared/config/environment.js';
 import { createPostgresPool } from '../../shared/database/postgres.js';
 import { registerErrorHandler } from '../../shared/http/error-handler.js';
@@ -27,9 +31,15 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
   });
 
   const healthCheckService = new HealthCheckService(config, app.log);
-  const identityPool = createPostgresPool(config);
-  const identityRepository = new PostgresIdentityRepository(identityPool);
+  const appPool = createPostgresPool(config);
+  const identityRepository = new PostgresIdentityRepository(appPool);
   const apiKeySecretService = new ApiKeySecretService(config.API_KEY_PEPPER);
+  const authenticateApiKeyUseCase = new AuthenticateApiKeyUseCase(
+    identityRepository,
+    apiKeySecretService,
+  );
+  const notificationQueuePublisher = new BullMqNotificationQueuePublisher(config.REDIS_URL);
+  const notificationRepository = new PostgresNotificationRepository(appPool);
 
   registerErrorHandler(app);
 
@@ -72,19 +82,24 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
 
   app.addHook('onClose', async () => {
     await healthCheckService.close();
-    await identityPool.end();
+    await notificationQueuePublisher.close();
+    await appPool.end();
   });
 
   registerHealthRoutes(app, healthCheckService);
   registerIdentityRoutes(app, {
-    authenticateApiKeyUseCase: new AuthenticateApiKeyUseCase(
-      identityRepository,
-      apiKeySecretService,
-    ),
+    authenticateApiKeyUseCase,
     createTenantUseCase: new CreateTenantUseCase(identityRepository, apiKeySecretService),
     getCurrentTenantUseCase: new GetCurrentTenantUseCase(identityRepository),
     identityRepository,
     jwtExpiresInSeconds: config.JWT_EXPIRES_IN_SECONDS,
+  });
+  registerNotificationRoutes(app, {
+    authenticateApiKeyUseCase,
+    createNotificationUseCase: new CreateNotificationUseCase(
+      notificationRepository,
+      notificationQueuePublisher,
+    ),
   });
 
   app.get(

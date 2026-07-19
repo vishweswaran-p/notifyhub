@@ -46,7 +46,15 @@ The second phase adds the identity foundation:
 - Authenticated request context for downstream modules.
 - Audit log persistence for identity events.
 
-Notification, queue, delivery, templates, rate limiting, and analytics modules will be implemented incrementally after this identity foundation is stable.
+The third phase adds notification intake:
+
+- Tenant-authenticated `POST /v1/notifications`.
+- Email, SMS, push, and webhook channel modeling.
+- Durable notification persistence with tenant-scoped idempotency keys.
+- Immediate and scheduled notification state.
+- BullMQ enqueueing with a stable `notification-delivery` job payload.
+
+Delivery providers, retry policies, dead-letter handling, templates, rate limiting, and analytics modules will be implemented incrementally after this intake foundation is stable.
 
 ## Identity Flow
 
@@ -69,4 +77,26 @@ sequenceDiagram
   Client->>API: GET /v1/tenants/me with Bearer JWT
   API->>DB: Load current tenant
   API-->>Client: Tenant profile
+```
+
+## Notification Intake Flow
+
+```mermaid
+sequenceDiagram
+  participant Client as Tenant App
+  participant API as Fastify API
+  participant DB as PostgreSQL
+  participant Queue as BullMQ
+
+  Client->>API: POST /v1/notifications with API key or JWT
+  API->>DB: Resolve tenant authentication
+  API->>DB: Check tenant + Idempotency-Key
+  alt Existing idempotency key
+    DB-->>API: Existing notification
+    API-->>Client: 202 Accepted + idempotentReplay=true
+  else New request
+    API->>DB: Persist notification
+    API->>Queue: Enqueue notification-delivery job
+    API-->>Client: 202 Accepted + idempotentReplay=false
+  end
 ```
