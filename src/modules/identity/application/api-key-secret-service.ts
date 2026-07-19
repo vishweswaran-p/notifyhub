@@ -19,14 +19,9 @@ export class ApiKeySecretService {
   }
 
   public extractPrefix(secret: string): string | null {
-    const parts = secret.split('_');
+    const match = /^nh_live_([a-f0-9]{12})_/.exec(secret);
 
-    if (parts.length !== 4 || parts[0] !== 'nh' || parts[1] !== 'live') {
-      return null;
-    }
-
-    const prefix = parts[2];
-    return prefix && /^[a-f0-9]{12}$/.test(prefix) ? prefix : null;
+    return match?.[1] ?? null;
   }
 
   public verify(candidate: string, expectedHash: string): boolean {
