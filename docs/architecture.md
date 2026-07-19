@@ -54,7 +54,15 @@ The third phase adds notification intake:
 - Immediate and scheduled notification state.
 - BullMQ enqueueing with a stable `notification-delivery` job payload.
 
-Delivery providers, retry policies, dead-letter handling, templates, rate limiting, and analytics modules will be implemented incrementally after this intake foundation is stable.
+The fourth phase adds delivery processing:
+
+- BullMQ worker consumption for `notification-delivery` jobs.
+- Provider abstraction by channel.
+- Mock email, SMS, push, and webhook providers.
+- Notification state transitions from queued/scheduled to processing, delivered, or failed.
+- Append-only delivery attempt history with provider metadata and errors.
+
+Retry policies, dead-letter handling, templates, rate limiting, and analytics modules will be implemented incrementally after this delivery foundation is stable.
 
 ## Identity Flow
 
@@ -98,5 +106,30 @@ sequenceDiagram
     API->>DB: Persist notification
     API->>Queue: Enqueue notification-delivery job
     API-->>Client: 202 Accepted + idempotentReplay=false
+  end
+```
+
+## Delivery Worker Flow
+
+```mermaid
+sequenceDiagram
+  participant Queue as BullMQ
+  participant Worker as Delivery Worker
+  participant DB as PostgreSQL
+  participant Provider as Mock Provider
+
+  Queue->>Worker: notification-delivery job
+  Worker->>DB: Load notification by tenant and id
+  Worker->>DB: Mark notification processing
+  Worker->>DB: Record processing attempt
+  Worker->>Provider: Deliver notification
+  alt Provider accepts
+    Provider-->>Worker: Provider message id
+    Worker->>DB: Mark notification delivered
+    Worker->>DB: Record delivered attempt
+  else Provider rejects
+    Provider-->>Worker: Provider error
+    Worker->>DB: Mark notification failed
+    Worker->>DB: Record failed attempt
   end
 ```
