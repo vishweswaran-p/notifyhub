@@ -108,7 +108,7 @@ curl -X POST http://localhost:3000/v1/notifications \
   }'
 ```
 
-Supported channels are `email`, `sms`, `push`, and `webhook`. Current providers are deterministic mock providers, which makes local development and automated tests safe.
+Supported channels are `email`, `sms`, `push`, and `webhook`. Local development defaults to deterministic mock providers, while HTTP-backed provider adapters can be enabled for external delivery.
 
 ## Status And Analytics
 

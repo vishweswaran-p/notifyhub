@@ -34,7 +34,7 @@ NotifyHub is organized around durable notification intake, asynchronous delivery
 - PostgreSQL migration runner with append-only SQL migrations.
 - PostgreSQL persistence for tenants, credentials, templates, notifications, delivery attempts, and audit logs.
 - Redis-backed rate limiting and BullMQ job orchestration.
-- Structured logging, environment validation, health checks, Docker Compose, and CI quality gates.
+- Structured logging, OpenTelemetry instrumentation, environment validation, health checks, Docker Compose, and CI quality gates.
 
 ### Identity And Tenant Isolation
 
@@ -52,6 +52,7 @@ NotifyHub is organized around durable notification intake, asynchronous delivery
 - Future scheduled notifications remain durable in PostgreSQL until the scheduler promotes them.
 - Due and immediate notifications are published to the BullMQ `notification-delivery` queue.
 - The delivery worker records processing, delivered, failed, and dead-letter outcomes.
+- Provider delivery is selected through a registry that supports deterministic mock providers and HTTP-backed external adapters.
 - Retry behavior uses environment-driven max attempts and exponential backoff.
 - Exhausted delivery failures transition notifications to `dead_lettered`.
 
@@ -161,7 +162,7 @@ sequenceDiagram
   participant Queue as BullMQ
   participant Worker as Delivery Worker
   participant DB as PostgreSQL
-  participant Provider as Mock Provider
+  participant Provider as Notification Provider
 
   Queue->>Worker: notification-delivery job
   Worker->>DB: Load notification by tenant and id

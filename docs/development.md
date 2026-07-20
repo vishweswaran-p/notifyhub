@@ -137,6 +137,29 @@ Configure scheduler behavior with:
 
 ## Provider Behavior
 
-Current notification providers are mock implementations for email, SMS, push, and webhook channels.
+NotifyHub supports two provider modes:
 
-To simulate provider failure locally, send a notification whose `recipient` contains `fail`. The mock provider will reject it, allowing retry and dead-letter behavior to be exercised without external services.
+- `NOTIFICATION_PROVIDER_MODE=mock`: deterministic local providers for email, SMS, push, and webhook.
+- `NOTIFICATION_PROVIDER_MODE=http`: HTTP-backed adapters that post notification payloads to configured external provider endpoints.
+
+Mock mode is the default for local development and tests. To simulate provider failure locally, send a notification whose `recipient` contains `fail`. The mock provider will reject it, allowing retry and dead-letter behavior to be exercised without external services.
+
+HTTP mode requires these endpoints:
+
+- `EMAIL_PROVIDER_URL`
+- `SMS_PROVIDER_URL`
+- `PUSH_PROVIDER_URL`
+
+Webhook notifications in HTTP mode post directly to the notification `recipient` URL. Provider API keys are optional and sent as Bearer tokens when configured.
+
+## OpenTelemetry
+
+OpenTelemetry is disabled by default. Enable it with:
+
+```bash
+OTEL_ENABLED=true
+OTEL_SERVICE_NAME=notifyhub-api
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318/v1/traces
+```
+
+Use service names such as `notifyhub-api`, `notifyhub-worker`, and `notifyhub-scheduler` when running each process separately.
