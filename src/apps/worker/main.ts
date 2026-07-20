@@ -1,22 +1,27 @@
-import { DeliverNotificationUseCase } from '../../modules/notifications/application/deliver-notification-use-case.js';
-import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
-import { MockNotificationProvider } from '../../modules/notifications/infrastructure/providers/mock-notification-provider.js';
-import { StaticNotificationProviderRegistry } from '../../modules/notifications/infrastructure/providers/static-notification-provider-registry.js';
-import { NotificationDeliveryWorker } from '../../modules/notifications/infrastructure/worker/notification-delivery-worker.js';
 import { loadConfig } from '../../shared/config/environment.js';
-import { createPostgresPool } from '../../shared/database/postgres.js';
-import { createLogger } from '../../shared/observability/logger.js';
+import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
 
 const config = loadConfig();
+const telemetry = initializeOpenTelemetry(config);
+const [
+  { DeliverNotificationUseCase },
+  { PostgresNotificationRepository },
+  { createNotificationProviderRegistry },
+  { NotificationDeliveryWorker },
+  { createPostgresPool },
+  { createLogger },
+] = await Promise.all([
+  import('../../modules/notifications/application/deliver-notification-use-case.js'),
+  import('../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
+  import('../../modules/notifications/infrastructure/providers/notification-provider-registry-factory.js'),
+  import('../../modules/notifications/infrastructure/worker/notification-delivery-worker.js'),
+  import('../../shared/database/postgres.js'),
+  import('../../shared/observability/logger.js'),
+]);
 const logger = createLogger(config);
 const pool = createPostgresPool(config);
 const notificationRepository = new PostgresNotificationRepository(pool);
-const providerRegistry = new StaticNotificationProviderRegistry([
-  new MockNotificationProvider('email'),
-  new MockNotificationProvider('sms'),
-  new MockNotificationProvider('push'),
-  new MockNotificationProvider('webhook'),
-]);
+const providerRegistry = createNotificationProviderRegistry(config);
 const deliveryWorker = new NotificationDeliveryWorker({
   redisUrl: config.REDIS_URL,
   deliverNotificationUseCase: new DeliverNotificationUseCase(
@@ -30,6 +35,7 @@ const deliveryWorker = new NotificationDeliveryWorker({
 logger.info(
   {
     redisUrl: config.REDIS_URL,
+    providerMode: config.NOTIFICATION_PROVIDER_MODE,
   },
   'NotifyHub worker process bootstrapped.',
 );
@@ -38,6 +44,7 @@ async function shutdown(signal: string): Promise<void> {
   logger.info({ signal }, 'Shutting down worker process.');
   await deliveryWorker.close();
   await pool.end();
+  await telemetry.shutdown();
   process.exit(0);
 }
 

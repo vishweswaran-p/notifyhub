@@ -44,6 +44,10 @@ services:
       DELIVERY_RETRY_BACKOFF_MS: 5000
       SCHEDULER_POLL_INTERVAL_MS: 5000
       SCHEDULER_BATCH_SIZE: 100
+      NOTIFICATION_PROVIDER_MODE: mock
+      HTTP_PROVIDER_TIMEOUT_MS: 10000
+      OTEL_ENABLED: false
+      OTEL_SERVICE_NAME: notifyhub-api
       CORS_ORIGIN: '*'
     ports:
       - '3000:3000'
@@ -71,6 +75,10 @@ services:
       DELIVERY_RETRY_BACKOFF_MS: 5000
       SCHEDULER_POLL_INTERVAL_MS: 5000
       SCHEDULER_BATCH_SIZE: 100
+      NOTIFICATION_PROVIDER_MODE: mock
+      HTTP_PROVIDER_TIMEOUT_MS: 10000
+      OTEL_ENABLED: false
+      OTEL_SERVICE_NAME: notifyhub-worker
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,6 +103,10 @@ services:
       DELIVERY_RETRY_BACKOFF_MS: 5000
       SCHEDULER_POLL_INTERVAL_MS: 5000
       SCHEDULER_BATCH_SIZE: 100
+      NOTIFICATION_PROVIDER_MODE: mock
+      HTTP_PROVIDER_TIMEOUT_MS: 10000
+      OTEL_ENABLED: false
+      OTEL_SERVICE_NAME: notifyhub-scheduler
     depends_on:
       postgres:
         condition: service_healthy

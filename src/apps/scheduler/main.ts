@@ -1,12 +1,23 @@
-import { PromoteScheduledNotificationsUseCase } from '../../modules/notifications/application/promote-scheduled-notifications-use-case.js';
-import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
-import { BullMqNotificationQueuePublisher } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js';
-import { ScheduledNotificationScheduler } from '../../modules/notifications/infrastructure/scheduler/scheduled-notification-scheduler.js';
 import { loadConfig } from '../../shared/config/environment.js';
-import { createPostgresPool } from '../../shared/database/postgres.js';
-import { createLogger } from '../../shared/observability/logger.js';
+import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
 
 const config = loadConfig();
+const telemetry = initializeOpenTelemetry(config);
+const [
+  { PromoteScheduledNotificationsUseCase },
+  { PostgresNotificationRepository },
+  { BullMqNotificationQueuePublisher },
+  { ScheduledNotificationScheduler },
+  { createPostgresPool },
+  { createLogger },
+] = await Promise.all([
+  import('../../modules/notifications/application/promote-scheduled-notifications-use-case.js'),
+  import('../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
+  import('../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js'),
+  import('../../modules/notifications/infrastructure/scheduler/scheduled-notification-scheduler.js'),
+  import('../../shared/database/postgres.js'),
+  import('../../shared/observability/logger.js'),
+]);
 const logger = createLogger(config);
 const pool = createPostgresPool(config);
 const notificationRepository = new PostgresNotificationRepository(pool);
@@ -40,6 +51,7 @@ async function shutdown(signal: string): Promise<void> {
   scheduler.stop();
   await queuePublisher.close();
   await pool.end();
+  await telemetry.shutdown();
   process.exit(0);
 }
 

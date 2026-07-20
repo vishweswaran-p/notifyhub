@@ -4,6 +4,21 @@ import { z } from 'zod';
 
 const defaultDevelopmentJwtSecret = 'dev-only-change-me-notifyhub-local-secret';
 const defaultDevelopmentApiKeyPepper = 'dev-only-change-me-notifyhub-api-key-pepper';
+const envBooleanSchema = z.preprocess((value) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+
+  if (value === 'true' || value === '1') {
+    return true;
+  }
+
+  if (value === 'false' || value === '0') {
+    return false;
+  }
+
+  return value;
+}, z.boolean());
 
 const environmentSchema = z
   .object({
@@ -25,6 +40,18 @@ const environmentSchema = z
     DELIVERY_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(5_000),
     SCHEDULER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
     SCHEDULER_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(100),
+    NOTIFICATION_PROVIDER_MODE: z.enum(['mock', 'http']).default('mock'),
+    HTTP_PROVIDER_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+    EMAIL_PROVIDER_URL: z.string().url().optional(),
+    EMAIL_PROVIDER_API_KEY: z.string().min(1).optional(),
+    SMS_PROVIDER_URL: z.string().url().optional(),
+    SMS_PROVIDER_API_KEY: z.string().min(1).optional(),
+    PUSH_PROVIDER_URL: z.string().url().optional(),
+    PUSH_PROVIDER_API_KEY: z.string().min(1).optional(),
+    WEBHOOK_PROVIDER_API_KEY: z.string().min(1).optional(),
+    OTEL_ENABLED: envBooleanSchema.default(false),
+    OTEL_SERVICE_NAME: z.string().min(1).default('notifyhub'),
+    OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
     CORS_ORIGIN: z.string().default('*'),
   })
   .superRefine((env, context) => {
@@ -42,6 +69,22 @@ const environmentSchema = z
         path: ['API_KEY_PEPPER'],
         message: 'API_KEY_PEPPER must be explicitly configured in production.',
       });
+    }
+
+    if (env.NOTIFICATION_PROVIDER_MODE === 'http') {
+      for (const [key, value] of Object.entries({
+        EMAIL_PROVIDER_URL: env.EMAIL_PROVIDER_URL,
+        SMS_PROVIDER_URL: env.SMS_PROVIDER_URL,
+        PUSH_PROVIDER_URL: env.PUSH_PROVIDER_URL,
+      })) {
+        if (!value) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} must be configured when NOTIFICATION_PROVIDER_MODE is http.`,
+          });
+        }
+      }
     }
   });
 

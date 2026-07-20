@@ -1,12 +1,15 @@
 import { loadConfig } from '../../shared/config/environment.js';
-import { buildApiServer } from './server.js';
+import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
 
 const config = loadConfig();
+const telemetry = initializeOpenTelemetry(config);
+const { buildApiServer } = await import('./server.js');
 const server = await buildApiServer(config);
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   server.log.info({ signal }, 'Shutting down API server.');
   await server.close();
+  await telemetry.shutdown();
 }
 
 process.on('SIGTERM', () => {

@@ -51,11 +51,34 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
     identityRepository,
     apiKeySecretService,
   );
-  const notificationQueuePublisher = new BullMqNotificationQueuePublisher(config.REDIS_URL, {
-    maxAttempts: config.DELIVERY_MAX_ATTEMPTS,
-    retryBackoffMs: config.DELIVERY_RETRY_BACKOFF_MS,
-  });
-  const notificationQueueMonitor = new BullMqNotificationQueueMonitor(config.REDIS_URL);
+  const notificationQueuePublisher =
+    config.NODE_ENV === 'test'
+      ? {
+          enqueueDelivery: () => Promise.resolve(),
+          close: () => Promise.resolve(),
+        }
+      : new BullMqNotificationQueuePublisher(config.REDIS_URL, {
+          maxAttempts: config.DELIVERY_MAX_ATTEMPTS,
+          retryBackoffMs: config.DELIVERY_RETRY_BACKOFF_MS,
+        });
+  const notificationQueueMonitor =
+    config.NODE_ENV === 'test'
+      ? {
+          getMetrics: () =>
+            Promise.resolve({
+              name: 'notification-delivery',
+              counts: {
+                waiting: 0,
+                active: 0,
+                delayed: 0,
+                completed: 0,
+                failed: 0,
+                paused: 0,
+              },
+            }),
+          close: () => Promise.resolve(),
+        }
+      : new BullMqNotificationQueueMonitor(config.REDIS_URL);
   const notificationRepository = new PostgresNotificationRepository(appPool);
   const notificationTemplateRepository = new PostgresNotificationTemplateRepository(appPool);
   const tenantNotificationPolicyRepository = new PostgresTenantNotificationPolicyRepository(
