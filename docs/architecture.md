@@ -85,7 +85,15 @@ The seventh phase adds tenant rate limiting:
 - Idempotent notification replays return the existing notification without consuming quota.
 - Exceeded limits return `429 NOTIFICATION_RATE_LIMIT_EXCEEDED` before persistence or enqueueing.
 
-Analytics modules will be implemented incrementally after this rate-limit foundation is stable.
+The eighth phase adds notification status and analytics reads:
+
+- Tenant-authenticated `GET /v1/notifications`.
+- Pagination with `limit` and `offset`.
+- Filtering by notification `status` and `channel`.
+- Tenant notification metrics grouped by status and channel.
+- Delivery attempt totals for delivered and failed provider attempts.
+
+Additional analytics dimensions and dashboard-oriented projections can be implemented after this read foundation is stable.
 
 ## Identity Flow
 

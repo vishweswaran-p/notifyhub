@@ -4,8 +4,12 @@ import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
 import type { Notification } from '../../domain/notification.js';
 import type {
   CreateNotificationInput,
+  GetTenantNotificationMetricsInput,
+  ListNotificationsInput,
+  ListNotificationsResult,
   NotificationRepository,
   RecordDeliveryAttemptInput,
+  TenantNotificationMetrics,
 } from '../../application/notification-repository.js';
 
 type NotificationRow = {
@@ -44,6 +48,26 @@ type DeliveryAttemptRow = {
   response_metadata: Record<string, unknown>;
   started_at: Date;
   completed_at: Date | null;
+};
+
+type CountRow = {
+  count: string;
+};
+
+type StatusCountRow = {
+  status: Notification['status'];
+  count: string;
+};
+
+type ChannelCountRow = {
+  channel: Notification['channel'];
+  count: string;
+};
+
+type DeliveryAttemptMetricsRow = {
+  total: string;
+  delivered: string;
+  failed: string;
 };
 
 export class PostgresNotificationRepository implements NotificationRepository {
@@ -105,6 +129,97 @@ export class PostgresNotificationRepository implements NotificationRepository {
     );
 
     return mapNotificationRow(requireSingleRow(result.rows));
+  }
+
+  public async listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {
+    const filters = ['tenant_id = $1'];
+    const values: unknown[] = [input.tenantId];
+
+    if (input.status) {
+      values.push(input.status);
+      filters.push(`status = $${values.length}`);
+    }
+
+    if (input.channel) {
+      values.push(input.channel);
+      filters.push(`channel = $${values.length}`);
+    }
+
+    const whereClause = filters.join(' and ');
+    const totalResult = await this.pool.query<CountRow>(
+      `select count(*) as count from notifications where ${whereClause}`,
+      values,
+    );
+    const listValues = [...values, input.limit, input.offset];
+    const itemsResult = await this.pool.query<NotificationRow>(
+      `
+        select ${notificationColumns}
+        from notifications
+        where ${whereClause}
+        order by created_at desc, id desc
+        limit $${values.length + 1}
+        offset $${values.length + 2}
+      `,
+      listValues,
+    );
+
+    return {
+      items: itemsResult.rows.map(mapNotificationRow),
+      total: Number(requireSingleRow(totalResult.rows).count),
+    };
+  }
+
+  public async getTenantMetrics(
+    input: GetTenantNotificationMetricsInput,
+  ): Promise<TenantNotificationMetrics> {
+    const [totalResult, statusResult, channelResult, deliveryAttemptsResult] = await Promise.all([
+      this.pool.query<CountRow>(
+        'select count(*) as count from notifications where tenant_id = $1',
+        [input.tenantId],
+      ),
+      this.pool.query<StatusCountRow>(
+        'select status, count(*) as count from notifications where tenant_id = $1 group by status',
+        [input.tenantId],
+      ),
+      this.pool.query<ChannelCountRow>(
+        'select channel, count(*) as count from notifications where tenant_id = $1 group by channel',
+        [input.tenantId],
+      ),
+      this.pool.query<DeliveryAttemptMetricsRow>(
+        `
+          select
+            count(*) as total,
+            count(*) filter (where status = 'delivered') as delivered,
+            count(*) filter (where status = 'failed') as failed
+          from delivery_attempts
+          where tenant_id = $1
+        `,
+        [input.tenantId],
+      ),
+    ]);
+
+    return {
+      total: Number(requireSingleRow(totalResult.rows).count),
+      byStatus: {
+        queued: countByStatus(statusResult.rows, 'queued'),
+        scheduled: countByStatus(statusResult.rows, 'scheduled'),
+        processing: countByStatus(statusResult.rows, 'processing'),
+        delivered: countByStatus(statusResult.rows, 'delivered'),
+        failed: countByStatus(statusResult.rows, 'failed'),
+        dead_lettered: countByStatus(statusResult.rows, 'dead_lettered'),
+      },
+      byChannel: {
+        email: countByChannel(channelResult.rows, 'email'),
+        sms: countByChannel(channelResult.rows, 'sms'),
+        push: countByChannel(channelResult.rows, 'push'),
+        webhook: countByChannel(channelResult.rows, 'webhook'),
+      },
+      deliveryAttempts: {
+        total: Number(requireSingleRow(deliveryAttemptsResult.rows).total),
+        delivered: Number(requireSingleRow(deliveryAttemptsResult.rows).delivered),
+        failed: Number(requireSingleRow(deliveryAttemptsResult.rows).failed),
+      },
+    };
   }
 
   public async findByIdForTenant(id: string, tenantId: string): Promise<Notification | null> {
@@ -358,4 +473,16 @@ function mapDeliveryAttemptRow(row: DeliveryAttemptRow): DeliveryAttempt {
     startedAt: row.started_at,
     completedAt: row.completed_at,
   };
+}
+
+function countByStatus(rows: StatusCountRow[], status: Notification['status']): number {
+  const row = rows.find((candidate) => candidate.status === status);
+
+  return row ? Number(row.count) : 0;
+}
+
+function countByChannel(rows: ChannelCountRow[], channel: Notification['channel']): number {
+  const row = rows.find((candidate) => candidate.channel === channel);
+
+  return row ? Number(row.count) : 0;
 }

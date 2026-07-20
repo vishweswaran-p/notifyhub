@@ -15,6 +15,11 @@ import type {
   CreateNotificationCommand,
   CreateNotificationUseCase,
 } from '../../application/create-notification-use-case.js';
+import type { GetNotificationMetricsUseCase } from '../../application/get-notification-metrics-use-case.js';
+import type {
+  ListNotificationsQuery,
+  ListNotificationsUseCase,
+} from '../../application/list-notifications-use-case.js';
 import type { Notification } from '../../domain/notification.js';
 import type { NotificationTemplate } from '../../domain/notification-template.js';
 
@@ -22,6 +27,8 @@ type RegisterNotificationRoutesDependencies = {
   authenticateApiKeyUseCase: AuthenticateApiKeyUseCase;
   createNotificationTemplateUseCase: CreateNotificationTemplateUseCase;
   createNotificationUseCase: CreateNotificationUseCase;
+  getNotificationMetricsUseCase: GetNotificationMetricsUseCase;
+  listNotificationsUseCase: ListNotificationsUseCase;
 };
 
 export function registerNotificationRoutes(
@@ -57,6 +64,32 @@ export function registerNotificationRoutes(
     },
   );
 
+  app.get<{ Querystring: ListNotificationsQuery }>(
+    '/v1/notifications',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Notifications'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        querystring: listNotificationsQuerySchema,
+        response: {
+          200: listNotificationsResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const result = await dependencies.listNotificationsUseCase.execute({
+        principal: requireAuth(request),
+        query: request.query,
+      });
+
+      return {
+        notifications: result.items.map(serializeNotification),
+        pagination: result.pagination,
+      };
+    },
+  );
+
   app.post<{ Body: CreateNotificationCommand; Headers: { 'idempotency-key'?: string } }>(
     '/v1/notifications',
     {
@@ -84,6 +117,29 @@ export function registerNotificationRoutes(
       return {
         notification: serializeNotification(result.notification),
         idempotentReplay: result.idempotentReplay,
+      };
+    },
+  );
+
+  app.get(
+    '/v1/analytics/notifications',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Analytics'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        response: {
+          200: notificationMetricsResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const metrics = await dependencies.getNotificationMetricsUseCase.execute({
+        principal: requireAuth(request),
+      });
+
+      return {
+        metrics,
       };
     },
   );
@@ -219,6 +275,85 @@ const notificationResponseSchema = {
   properties: {
     notification: notificationSchema,
     idempotentReplay: { type: 'boolean' },
+  },
+} as const;
+
+const listNotificationsQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+    status: {
+      type: 'string',
+      enum: ['queued', 'scheduled', 'processing', 'delivered', 'failed', 'dead_lettered'],
+    },
+    channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
+  },
+} as const;
+
+const listNotificationsResponseSchema = {
+  type: 'object',
+  required: ['notifications', 'pagination'],
+  properties: {
+    notifications: {
+      type: 'array',
+      items: notificationSchema,
+    },
+    pagination: {
+      type: 'object',
+      required: ['limit', 'offset', 'total'],
+      properties: {
+        limit: { type: 'integer' },
+        offset: { type: 'integer' },
+        total: { type: 'integer' },
+      },
+    },
+  },
+} as const;
+
+const notificationMetricsResponseSchema = {
+  type: 'object',
+  required: ['metrics'],
+  properties: {
+    metrics: {
+      type: 'object',
+      required: ['total', 'byStatus', 'byChannel', 'deliveryAttempts'],
+      properties: {
+        total: { type: 'integer' },
+        byStatus: {
+          type: 'object',
+          required: ['queued', 'scheduled', 'processing', 'delivered', 'failed', 'dead_lettered'],
+          properties: {
+            queued: { type: 'integer' },
+            scheduled: { type: 'integer' },
+            processing: { type: 'integer' },
+            delivered: { type: 'integer' },
+            failed: { type: 'integer' },
+            dead_lettered: { type: 'integer' },
+          },
+        },
+        byChannel: {
+          type: 'object',
+          required: ['email', 'sms', 'push', 'webhook'],
+          properties: {
+            email: { type: 'integer' },
+            sms: { type: 'integer' },
+            push: { type: 'integer' },
+            webhook: { type: 'integer' },
+          },
+        },
+        deliveryAttempts: {
+          type: 'object',
+          required: ['total', 'delivered', 'failed'],
+          properties: {
+            total: { type: 'integer' },
+            delivered: { type: 'integer' },
+            failed: { type: 'integer' },
+          },
+        },
+      },
+    },
   },
 } as const;
 

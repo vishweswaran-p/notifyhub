@@ -4,8 +4,12 @@ import type { DeliveryAttempt } from '../../../src/modules/notifications/domain/
 import type { Notification } from '../../../src/modules/notifications/domain/notification.js';
 import type {
   CreateNotificationInput,
+  GetTenantNotificationMetricsInput,
+  ListNotificationsInput,
+  ListNotificationsResult,
   NotificationRepository,
   RecordDeliveryAttemptInput,
+  TenantNotificationMetrics,
 } from '../../../src/modules/notifications/application/notification-repository.js';
 
 export class InMemoryNotificationRepository implements NotificationRepository {
@@ -39,6 +43,57 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     this.notifications.set(notification.id, notification);
 
     return Promise.resolve(notification);
+  }
+
+  public listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {
+    const filtered = [...this.notifications.values()]
+      .filter((notification) => notification.tenantId === input.tenantId)
+      .filter((notification) => !input.status || notification.status === input.status)
+      .filter((notification) => !input.channel || notification.channel === input.channel)
+      .sort((left, right) => {
+        const createdAtDifference = right.createdAt.getTime() - left.createdAt.getTime();
+
+        return createdAtDifference || right.id.localeCompare(left.id);
+      });
+
+    return Promise.resolve({
+      items: filtered.slice(input.offset, input.offset + input.limit),
+      total: filtered.length,
+    });
+  }
+
+  public getTenantMetrics(
+    input: GetTenantNotificationMetricsInput,
+  ): Promise<TenantNotificationMetrics> {
+    const notifications = [...this.notifications.values()].filter(
+      (notification) => notification.tenantId === input.tenantId,
+    );
+    const deliveryAttempts = this.deliveryAttempts.filter(
+      (attempt) => attempt.tenantId === input.tenantId,
+    );
+
+    return Promise.resolve({
+      total: notifications.length,
+      byStatus: {
+        queued: countNotificationsBy(notifications, 'status', 'queued'),
+        scheduled: countNotificationsBy(notifications, 'status', 'scheduled'),
+        processing: countNotificationsBy(notifications, 'status', 'processing'),
+        delivered: countNotificationsBy(notifications, 'status', 'delivered'),
+        failed: countNotificationsBy(notifications, 'status', 'failed'),
+        dead_lettered: countNotificationsBy(notifications, 'status', 'dead_lettered'),
+      },
+      byChannel: {
+        email: countNotificationsBy(notifications, 'channel', 'email'),
+        sms: countNotificationsBy(notifications, 'channel', 'sms'),
+        push: countNotificationsBy(notifications, 'channel', 'push'),
+        webhook: countNotificationsBy(notifications, 'channel', 'webhook'),
+      },
+      deliveryAttempts: {
+        total: deliveryAttempts.length,
+        delivered: deliveryAttempts.filter((attempt) => attempt.status === 'delivered').length,
+        failed: deliveryAttempts.filter((attempt) => attempt.status === 'failed').length,
+      },
+    });
   }
 
   public findByTenantAndIdempotencyKey(
@@ -151,4 +206,12 @@ export class InMemoryNotificationRepository implements NotificationRepository {
 
     return updated;
   }
+}
+
+function countNotificationsBy<TKey extends 'status' | 'channel', TValue extends Notification[TKey]>(
+  notifications: Notification[],
+  key: TKey,
+  value: TValue,
+): number {
+  return notifications.filter((notification) => notification[key] === value).length;
 }

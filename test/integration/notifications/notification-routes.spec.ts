@@ -10,6 +10,8 @@ import { GetCurrentTenantUseCase } from '../../../src/modules/identity/applicati
 import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
 import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
+import { GetNotificationMetricsUseCase } from '../../../src/modules/notifications/application/get-notification-metrics-use-case.js';
+import { ListNotificationsUseCase } from '../../../src/modules/notifications/application/list-notifications-use-case.js';
 import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
 import { registerNotificationRoutes } from '../../../src/modules/notifications/interfaces/http/notification-routes.js';
 import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
@@ -73,6 +75,8 @@ describe('notification routes', () => {
         rateLimiter,
         queuePublisher,
       ),
+      getNotificationMetricsUseCase: new GetNotificationMetricsUseCase(notificationRepository),
+      listNotificationsUseCase: new ListNotificationsUseCase(notificationRepository),
     });
   });
 
@@ -144,6 +148,96 @@ describe('notification routes', () => {
       first.json<{ notification: { id: string } }>().notification.id,
     );
     expect(queuePublisher.jobs).toHaveLength(1);
+  });
+
+  it('lists notifications with filters and pagination metadata', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    await createNotification(app, apiKey, {
+      idempotencyKey: 'list-email-1',
+      payload: {
+        channel: 'email',
+        recipient: 'user@example.com',
+        body: 'Hello',
+      },
+    });
+    await createNotification(app, apiKey, {
+      idempotencyKey: 'list-sms-1',
+      payload: {
+        channel: 'sms',
+        recipient: '+15555550123',
+        body: 'Hello',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/notifications?channel=email&limit=10&offset=0',
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      notifications: [
+        {
+          channel: 'email',
+          recipient: 'user@example.com',
+        },
+      ],
+      pagination: {
+        limit: 10,
+        offset: 0,
+        total: 1,
+      },
+    });
+  });
+
+  it('returns tenant notification analytics', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    await createNotification(app, apiKey, {
+      idempotencyKey: 'metrics-email-1',
+      payload: {
+        channel: 'email',
+        recipient: 'user@example.com',
+        body: 'Hello',
+      },
+    });
+    await createNotification(app, apiKey, {
+      idempotencyKey: 'metrics-webhook-1',
+      payload: {
+        channel: 'webhook',
+        recipient: 'https://example.com/webhook',
+        body: '{}',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/analytics/notifications',
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      metrics: {
+        total: 2,
+        byStatus: {
+          queued: 2,
+        },
+        byChannel: {
+          email: 1,
+          webhook: 1,
+        },
+        deliveryAttempts: {
+          total: 0,
+          delivered: 0,
+          failed: 0,
+        },
+      },
+    });
   });
 
   it('creates a template and renders a notification from it', async () => {
@@ -248,4 +342,23 @@ async function createTenantAndGetApiKey(app: FastifyInstance): Promise<string> {
   });
 
   return response.json<{ apiKey: { secret: string } }>().apiKey.secret;
+}
+
+async function createNotification(
+  app: FastifyInstance,
+  apiKey: string,
+  params: {
+    idempotencyKey: string;
+    payload: Record<string, unknown>;
+  },
+): Promise<void> {
+  await app.inject({
+    method: 'POST',
+    url: '/v1/notifications',
+    headers: {
+      'x-api-key': apiKey,
+      'idempotency-key': params.idempotencyKey,
+    },
+    payload: params.payload,
+  });
 }

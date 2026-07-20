@@ -22,6 +22,8 @@ export type CreateNotificationInput = {
 
 export interface NotificationRepository {
   create(input: CreateNotificationInput): Promise<Notification>;
+  listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult>;
+  getTenantMetrics(input: GetTenantNotificationMetricsInput): Promise<TenantNotificationMetrics>;
   findByIdForTenant(id: string, tenantId: string): Promise<Notification | null>;
   findByTenantAndIdempotencyKey(
     tenantId: string,
@@ -61,4 +63,32 @@ export type RecordDeliveryAttemptInput = {
 export type NotificationFailureMetadata = {
   errorCode: string;
   errorMessage: string;
+};
+
+export type ListNotificationsInput = {
+  tenantId: string;
+  limit: number;
+  offset: number;
+  status?: NotificationStatus;
+  channel?: NotificationChannel;
+};
+
+export type ListNotificationsResult = {
+  items: Notification[];
+  total: number;
+};
+
+export type GetTenantNotificationMetricsInput = {
+  tenantId: string;
+};
+
+export type TenantNotificationMetrics = {
+  total: number;
+  byStatus: Record<NotificationStatus, number>;
+  byChannel: Record<NotificationChannel, number>;
+  deliveryAttempts: {
+    total: number;
+    delivered: number;
+    failed: number;
+  };
 };

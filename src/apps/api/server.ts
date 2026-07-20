@@ -17,6 +17,8 @@ import { PostgresIdentityRepository } from '../../modules/identity/infrastructur
 import { registerIdentityRoutes } from '../../modules/identity/interfaces/http/identity-routes.js';
 import { CreateNotificationTemplateUseCase } from '../../modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../modules/notifications/application/create-notification-use-case.js';
+import { GetNotificationMetricsUseCase } from '../../modules/notifications/application/get-notification-metrics-use-case.js';
+import { ListNotificationsUseCase } from '../../modules/notifications/application/list-notifications-use-case.js';
 import { TemplateRenderer } from '../../modules/notifications/application/template-renderer.js';
 import { PostgresNotificationTemplateRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-template-repository.js';
 import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
@@ -122,6 +124,8 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
       tenantRateLimiter,
       notificationQueuePublisher,
     ),
+    getNotificationMetricsUseCase: new GetNotificationMetricsUseCase(notificationRepository),
+    listNotificationsUseCase: new ListNotificationsUseCase(notificationRepository),
   });
 
   app.get(
