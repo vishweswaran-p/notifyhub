@@ -13,7 +13,7 @@ The system is built as a modular Node.js service with independently runnable API
 - Idempotent notification requests.
 - Redis-backed tenant rate limiting.
 - BullMQ delivery queue and worker process.
-- Mock and HTTP-backed provider adapters for all notification channels.
+- Mock and HTTP-backed provider adapters, plus Firebase Cloud Messaging for push.
 - Retry with exponential backoff and dead-letter status.
 - Delivery attempt history API with provider metadata.
 - Queue monitoring metrics for the notification delivery queue.

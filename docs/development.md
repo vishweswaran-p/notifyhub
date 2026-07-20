@@ -141,6 +141,7 @@ NotifyHub supports two provider modes:
 
 - `NOTIFICATION_PROVIDER_MODE=mock`: deterministic local providers for email, SMS, push, and webhook.
 - `NOTIFICATION_PROVIDER_MODE=http`: HTTP-backed adapters that post notification payloads to configured external provider endpoints.
+- `PUSH_PROVIDER_MODE=fcm`: Firebase Cloud Messaging for push notifications.
 
 Mock mode is the default for local development and tests. To simulate provider failure locally, send a notification whose `recipient` contains `fail`. The mock provider will reject it, allowing retry and dead-letter behavior to be exercised without external services.
 
@@ -151,6 +152,8 @@ HTTP mode requires these endpoints:
 - `PUSH_PROVIDER_URL`
 
 Webhook notifications in HTTP mode post directly to the notification `recipient` URL. Provider API keys are optional and sent as Bearer tokens when configured.
+
+FCM mode requires `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL`, and `FCM_PRIVATE_KEY`. In this mode, push notification recipients are FCM device registration tokens.
 
 ## OpenTelemetry
 

@@ -34,6 +34,17 @@ Email, SMS, and push providers receive a JSON payload containing notification id
 
 Provider responses may include `providerMessageId`, `messageId`, or `id`; NotifyHub stores that value in delivery attempt history.
 
+Firebase Cloud Messaging is supported as a first-class push provider. It can be enabled without changing email, SMS, or webhook delivery:
+
+```bash
+PUSH_PROVIDER_MODE=fcm
+FCM_PROJECT_ID=your-firebase-project-id
+FCM_CLIENT_EMAIL=firebase-adminsdk-...@your-project.iam.gserviceaccount.com
+FCM_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+```
+
+When FCM is enabled, push notification `recipient` values must be FCM device registration tokens. FCM delivery uses the HTTP v1 API and stores the returned FCM message name as the provider message id.
+
 ## OpenTelemetry
 
 Enable tracing with:

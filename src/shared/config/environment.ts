@@ -46,8 +46,12 @@ const environmentSchema = z
     EMAIL_PROVIDER_API_KEY: z.string().min(1).optional(),
     SMS_PROVIDER_URL: z.string().url().optional(),
     SMS_PROVIDER_API_KEY: z.string().min(1).optional(),
+    PUSH_PROVIDER_MODE: z.enum(['mock', 'http', 'fcm']).optional(),
     PUSH_PROVIDER_URL: z.string().url().optional(),
     PUSH_PROVIDER_API_KEY: z.string().min(1).optional(),
+    FCM_PROJECT_ID: z.string().min(1).optional(),
+    FCM_CLIENT_EMAIL: z.string().email().optional(),
+    FCM_PRIVATE_KEY: z.string().min(1).optional(),
     WEBHOOK_PROVIDER_API_KEY: z.string().min(1).optional(),
     OTEL_ENABLED: envBooleanSchema.default(false),
     OTEL_SERVICE_NAME: z.string().min(1).default('notifyhub'),
@@ -75,13 +79,38 @@ const environmentSchema = z
       for (const [key, value] of Object.entries({
         EMAIL_PROVIDER_URL: env.EMAIL_PROVIDER_URL,
         SMS_PROVIDER_URL: env.SMS_PROVIDER_URL,
-        PUSH_PROVIDER_URL: env.PUSH_PROVIDER_URL,
       })) {
         if (!value) {
           context.addIssue({
             code: z.ZodIssueCode.custom,
             path: [key],
             message: `${key} must be configured when NOTIFICATION_PROVIDER_MODE is http.`,
+          });
+        }
+      }
+    }
+
+    const pushProviderMode = env.PUSH_PROVIDER_MODE ?? env.NOTIFICATION_PROVIDER_MODE;
+
+    if (pushProviderMode === 'http' && !env.PUSH_PROVIDER_URL) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['PUSH_PROVIDER_URL'],
+        message: 'PUSH_PROVIDER_URL must be configured when push provider mode is http.',
+      });
+    }
+
+    if (pushProviderMode === 'fcm') {
+      for (const [key, value] of Object.entries({
+        FCM_PROJECT_ID: env.FCM_PROJECT_ID,
+        FCM_CLIENT_EMAIL: env.FCM_CLIENT_EMAIL,
+        FCM_PRIVATE_KEY: env.FCM_PRIVATE_KEY,
+      })) {
+        if (!value) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: [key],
+            message: `${key} must be configured when push provider mode is fcm.`,
           });
         }
       }

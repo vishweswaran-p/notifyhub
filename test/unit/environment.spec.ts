@@ -57,6 +57,26 @@ describe('loadConfig', () => {
     expect(config.OTEL_SERVICE_NAME).toBe('notifyhub-worker');
   });
 
+  it('loads FCM push provider configuration', () => {
+    const config = loadConfig({
+      PUSH_PROVIDER_MODE: 'fcm',
+      FCM_PROJECT_ID: 'notifyhub',
+      FCM_CLIENT_EMAIL: 'firebase-adminsdk@example.iam.gserviceaccount.com',
+      FCM_PRIVATE_KEY: '-----BEGIN PRIVATE KEY-----\\nsecret\\n-----END PRIVATE KEY-----\\n',
+    });
+
+    expect(config.PUSH_PROVIDER_MODE).toBe('fcm');
+    expect(config.FCM_PROJECT_ID).toBe('notifyhub');
+  });
+
+  it('requires FCM service account configuration when FCM push is enabled', () => {
+    expect(() =>
+      loadConfig({
+        PUSH_PROVIDER_MODE: 'fcm',
+      }),
+    ).toThrow(/FCM_PROJECT_ID|FCM_CLIENT_EMAIL|FCM_PRIVATE_KEY/);
+  });
+
   it('parses false boolean environment values explicitly', () => {
     const config = loadConfig({
       OTEL_ENABLED: 'false',
