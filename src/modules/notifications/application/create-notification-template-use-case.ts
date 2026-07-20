@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 import { NotificationTemplateNameAlreadyExistsError } from './notification-template-errors.js';
 
-import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
-import type { NotificationTemplate } from '../domain/notification-template.js';
+import type { AuthPrincipal } from '@modules/identity/application/auth-principal.js';
+import type { NotificationTemplate } from '@modules/notifications/domain/notification-template.js';
 import type { NotificationTemplateRepository } from './notification-template-repository.js';
 
 const createNotificationTemplateSchema = z.object({

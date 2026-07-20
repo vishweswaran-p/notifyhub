@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ProviderDeliveryError } from '../../../src/modules/notifications/application/providers/provider-delivery-error.js';
-import { HttpNotificationProvider } from '../../../src/modules/notifications/infrastructure/providers/http-notification-provider.js';
+import { ProviderDeliveryError } from '@modules/notifications/application/providers/provider-delivery-error.js';
+import { HttpNotificationProvider } from '@modules/notifications/infrastructure/providers/http-notification-provider.js';
 
-import type { Notification } from '../../../src/modules/notifications/domain/notification.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
 
 const notification: Notification = {
   id: '2bfa7ac4-0750-4072-a3ac-12844955192d',

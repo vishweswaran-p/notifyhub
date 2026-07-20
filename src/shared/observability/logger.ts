@@ -1,6 +1,6 @@
 import pino, { type LoggerOptions } from 'pino';
 
-import type { AppConfig } from '../config/environment.js';
+import type { AppConfig } from '@shared/config/environment.js';
 
 export function createLoggerOptions(
   config: Pick<AppConfig, 'LOG_LEVEL' | 'NODE_ENV'>,

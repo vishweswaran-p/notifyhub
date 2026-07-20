@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PromoteScheduledNotificationsUseCase } from '../../../src/modules/notifications/application/promote-scheduled-notifications-use-case.js';
+import { PromoteScheduledNotificationsUseCase } from '@modules/notifications/application/promote-scheduled-notifications-use-case.js';
 
 import { FakeNotificationQueuePublisher } from './fake-notification-queue-publisher.js';
 import { InMemoryNotificationRepository } from './in-memory-notification-repository.js';

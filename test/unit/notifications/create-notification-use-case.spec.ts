@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
-import { NotificationRateLimitExceededError } from '../../../src/modules/notifications/application/rate-limit/rate-limit-errors.js';
-import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
+import { CreateNotificationUseCase } from '@modules/notifications/application/create-notification-use-case.js';
+import { NotificationRateLimitExceededError } from '@modules/notifications/application/rate-limit/rate-limit-errors.js';
+import { TemplateRenderer } from '@modules/notifications/application/template-renderer.js';
 
 import { FakeNotificationQueuePublisher } from './fake-notification-queue-publisher.js';
 import { InMemoryNotificationRepository } from './in-memory-notification-repository.js';

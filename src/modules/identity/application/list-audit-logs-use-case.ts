@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import type { AuthPrincipal } from './auth-principal.js';
 import type { IdentityRepository } from './identity-repository.js';
-import type { AuditLog } from '../domain/audit-log.js';
+import type { AuditLog } from '@modules/identity/domain/audit-log.js';
 
 const listAuditLogsSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),

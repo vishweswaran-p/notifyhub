@@ -1,7 +1,7 @@
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 
-import { ApplicationError } from '../errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 type ErrorResponse = {
   error: {

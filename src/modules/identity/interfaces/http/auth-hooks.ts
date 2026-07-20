@@ -2,9 +2,9 @@ import './authenticated-request.js';
 
 import type { FastifyRequest } from 'fastify';
 
-import { InvalidCredentialsError } from '../../application/identity-errors.js';
+import { InvalidCredentialsError } from '@modules/identity/application/identity-errors.js';
 
-import type { AuthenticateApiKeyUseCase } from '../../application/authenticate-api-key-use-case.js';
+import type { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
 
 type JwtTenantPayload = {
   tenantId: string;

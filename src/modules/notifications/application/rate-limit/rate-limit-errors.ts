@@ -1,4 +1,4 @@
-import { ApplicationError } from '../../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 export class NotificationRateLimitExceededError extends ApplicationError {
   public constructor(params: { limit: number; remaining: number; resetAt: Date }) {

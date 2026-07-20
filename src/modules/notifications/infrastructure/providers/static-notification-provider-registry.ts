@@ -1,10 +1,10 @@
-import { ApplicationError } from '../../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 import type {
   NotificationProvider,
   NotificationProviderRegistry,
-} from '../../application/providers/notification-provider.js';
-import type { NotificationChannel } from '../../domain/notification.js';
+} from '@modules/notifications/application/providers/notification-provider.js';
+import type { NotificationChannel } from '@modules/notifications/domain/notification.js';
 
 export class StaticNotificationProviderRegistry implements NotificationProviderRegistry {
   private readonly providersByChannel = new Map<NotificationChannel, NotificationProvider>();

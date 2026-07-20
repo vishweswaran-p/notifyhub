@@ -1,4 +1,7 @@
-import type { Notification, NotificationChannel } from '../../domain/notification.js';
+import type {
+  Notification,
+  NotificationChannel,
+} from '@modules/notifications/domain/notification.js';
 
 export type ProviderDeliveryResult = {
   providerMessageId: string;

@@ -3,7 +3,7 @@ import type { Pool } from 'pg';
 import type {
   TenantNotificationPolicy,
   TenantNotificationPolicyRepository,
-} from '../../application/rate-limit/tenant-notification-policy-repository.js';
+} from '@modules/notifications/application/rate-limit/tenant-notification-policy-repository.js';
 
 type TenantPolicyRow = {
   id: string;

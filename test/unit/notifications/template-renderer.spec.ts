@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
-import { ApplicationError } from '../../../src/shared/errors/application-error.js';
+import { TemplateRenderer } from '@modules/notifications/application/template-renderer.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 describe('TemplateRenderer', () => {
   it('replaces placeholders with stringified variable values', () => {

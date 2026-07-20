@@ -1,4 +1,4 @@
-import { ApplicationError } from '../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 export class TenantSlugAlreadyExistsError extends ApplicationError {
   public constructor(slug: string) {

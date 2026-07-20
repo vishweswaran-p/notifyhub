@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
-import { ApplicationError } from '../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
-import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
-import type { DeliveryAttempt } from '../domain/delivery-attempt.js';
+import type { AuthPrincipal } from '@modules/identity/application/auth-principal.js';
+import type { DeliveryAttempt } from '@modules/notifications/domain/delivery-attempt.js';
 import type { NotificationRepository } from './notification-repository.js';
 
 const listDeliveryAttemptsSchema = z.object({

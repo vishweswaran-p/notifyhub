@@ -1,17 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 
-import type { AuthenticateApiKeyUseCase } from '../../application/authenticate-api-key-use-case.js';
+import type { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
 import type {
   CreateTenantCommand,
   CreateTenantUseCase,
-} from '../../application/create-tenant-use-case.js';
-import type { GetCurrentTenantUseCase } from '../../application/get-current-tenant-use-case.js';
-import type { IdentityRepository } from '../../application/identity-repository.js';
+} from '@modules/identity/application/create-tenant-use-case.js';
+import type { GetCurrentTenantUseCase } from '@modules/identity/application/get-current-tenant-use-case.js';
+import type { IdentityRepository } from '@modules/identity/application/identity-repository.js';
 import type {
   ListAuditLogsQuery,
   ListAuditLogsUseCase,
-} from '../../application/list-audit-logs-use-case.js';
-import type { AuditLog } from '../../domain/audit-log.js';
+} from '@modules/identity/application/list-audit-logs-use-case.js';
+import type { AuditLog } from '@modules/identity/domain/audit-log.js';
 import { createRequireApiKey, createRequireTenantAuth, requireAuth } from './auth-hooks.js';
 
 type RegisterIdentityRoutesDependencies = {

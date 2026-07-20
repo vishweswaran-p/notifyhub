@@ -1,5 +1,5 @@
-import type { NotificationTemplate } from '../domain/notification-template.js';
-import type { NotificationChannel } from '../domain/notification.js';
+import type { NotificationTemplate } from '@modules/notifications/domain/notification-template.js';
+import type { NotificationChannel } from '@modules/notifications/domain/notification.js';
 
 export type CreateNotificationTemplateInput = {
   tenantId: string;

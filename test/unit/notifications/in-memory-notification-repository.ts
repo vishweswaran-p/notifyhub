@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
-import type { DeliveryAttempt } from '../../../src/modules/notifications/domain/delivery-attempt.js';
-import type { Notification } from '../../../src/modules/notifications/domain/notification.js';
+import type { DeliveryAttempt } from '@modules/notifications/domain/delivery-attempt.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
 import type {
   ClaimDueScheduledInput,
   CreateNotificationInput,
@@ -14,7 +14,7 @@ import type {
   RecordDeliveryAttemptInput,
   ReplayDeadLetteredInput,
   TenantNotificationMetrics,
-} from '../../../src/modules/notifications/application/notification-repository.js';
+} from '@modules/notifications/application/notification-repository.js';
 
 export class InMemoryNotificationRepository implements NotificationRepository {
   public readonly notifications = new Map<string, Notification>();

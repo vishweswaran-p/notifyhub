@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiKeySecretService } from '../../../src/modules/identity/application/api-key-secret-service.js';
-import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
+import { ApiKeySecretService } from '@modules/identity/application/api-key-secret-service.js';
+import { CreateTenantUseCase } from '@modules/identity/application/create-tenant-use-case.js';
 
 import { InMemoryIdentityRepository } from './in-memory-identity-repository.js';
 

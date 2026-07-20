@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { buildApiServer } from '../../src/apps/api/server.js';
-import { loadConfig } from '../../src/shared/config/environment.js';
+import { buildApiServer } from '@apps/api/server.js';
+import { loadConfig } from '@shared/config/environment.js';
 
 import type { FastifyInstance } from 'fastify';
 

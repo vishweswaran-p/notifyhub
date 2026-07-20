@@ -1,4 +1,4 @@
-import { ApplicationError } from '../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 
 const placeholderPattern = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.-]*)\s*\}\}/g;
 

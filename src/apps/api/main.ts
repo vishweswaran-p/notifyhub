@@ -1,5 +1,5 @@
-import { loadConfig } from '../../shared/config/environment.js';
-import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
+import { loadConfig } from '@shared/config/environment.js';
+import { initializeOpenTelemetry } from '@shared/observability/tracing.js';
 
 const config = loadConfig();
 const telemetry = initializeOpenTelemetry(config);

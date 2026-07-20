@@ -6,8 +6,8 @@ import {
 } from './notification-template-errors.js';
 import { NotificationRateLimitExceededError } from './rate-limit/rate-limit-errors.js';
 
-import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
-import type { Notification } from '../domain/notification.js';
+import type { AuthPrincipal } from '@modules/identity/application/auth-principal.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
 import type { NotificationQueuePublisher } from './notification-queue-publisher.js';
 import type { NotificationRepository } from './notification-repository.js';
 import type { NotificationTemplateRepository } from './notification-template-repository.js';

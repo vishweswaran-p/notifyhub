@@ -4,7 +4,7 @@ import type {
   ConsumeTenantRateLimitInput,
   ConsumeTenantRateLimitResult,
   TenantRateLimiter,
-} from '../../application/rate-limit/tenant-rate-limiter.js';
+} from '@modules/notifications/application/rate-limit/tenant-rate-limiter.js';
 
 export class RedisTenantRateLimiter implements TenantRateLimiter {
   private readonly redis: Redis;

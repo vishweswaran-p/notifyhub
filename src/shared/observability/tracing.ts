@@ -4,7 +4,7 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
 
-import type { AppConfig } from '../config/environment.js';
+import type { AppConfig } from '@shared/config/environment.js';
 
 export type TelemetryHandle = {
   shutdown(): Promise<void>;

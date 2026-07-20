@@ -1,5 +1,5 @@
-import { loadConfig } from '../../shared/config/environment.js';
-import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
+import { loadConfig } from '@shared/config/environment.js';
+import { initializeOpenTelemetry } from '@shared/observability/tracing.js';
 
 const config = loadConfig();
 const telemetry = initializeOpenTelemetry(config);
@@ -11,12 +11,12 @@ const [
   { createPostgresPool },
   { createLogger },
 ] = await Promise.all([
-  import('../../modules/notifications/application/promote-scheduled-notifications-use-case.js'),
-  import('../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
-  import('../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js'),
-  import('../../modules/notifications/infrastructure/scheduler/scheduled-notification-scheduler.js'),
-  import('../../shared/database/postgres.js'),
-  import('../../shared/observability/logger.js'),
+  import('@modules/notifications/application/promote-scheduled-notifications-use-case.js'),
+  import('@modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
+  import('@modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js'),
+  import('@modules/notifications/infrastructure/scheduler/scheduled-notification-scheduler.js'),
+  import('@shared/database/postgres.js'),
+  import('@shared/observability/logger.js'),
 ]);
 const logger = createLogger(config);
 const pool = createPostgresPool(config);

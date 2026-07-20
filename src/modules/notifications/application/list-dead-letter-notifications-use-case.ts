@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
-import type { Notification } from '../domain/notification.js';
+import type { AuthPrincipal } from '@modules/identity/application/auth-principal.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
 import type { NotificationRepository } from './notification-repository.js';
 
 const listDeadLetterNotificationsSchema = z.object({

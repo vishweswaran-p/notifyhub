@@ -2,8 +2,8 @@ import { MockNotificationProvider } from './mock-notification-provider.js';
 import { HttpNotificationProvider } from './http-notification-provider.js';
 import { StaticNotificationProviderRegistry } from './static-notification-provider-registry.js';
 
-import type { AppConfig } from '../../../../shared/config/environment.js';
-import type { NotificationProviderRegistry } from '../../application/providers/notification-provider.js';
+import type { AppConfig } from '@shared/config/environment.js';
+import type { NotificationProviderRegistry } from '@modules/notifications/application/providers/notification-provider.js';
 
 export function createNotificationProviderRegistry(
   config: AppConfig,

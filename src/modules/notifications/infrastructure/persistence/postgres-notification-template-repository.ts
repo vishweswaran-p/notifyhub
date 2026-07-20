@@ -3,8 +3,8 @@ import type { Pool } from 'pg';
 import type {
   CreateNotificationTemplateInput,
   NotificationTemplateRepository,
-} from '../../application/notification-template-repository.js';
-import type { NotificationTemplate } from '../../domain/notification-template.js';
+} from '@modules/notifications/application/notification-template-repository.js';
+import type { NotificationTemplate } from '@modules/notifications/domain/notification-template.js';
 
 type NotificationTemplateRow = {
   id: string;

@@ -1,4 +1,4 @@
-import type { NotificationChannel } from '../domain/notification.js';
+import type { NotificationChannel } from '@modules/notifications/domain/notification.js';
 
 export const notificationDeliveryQueueName = 'notification-delivery';
 

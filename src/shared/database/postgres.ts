@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 
-import type { AppConfig } from '../config/environment.js';
+import type { AppConfig } from '@shared/config/environment.js';
 
 export function createPostgresPool(config: Pick<AppConfig, 'DATABASE_URL'>): Pool {
   return new Pool({

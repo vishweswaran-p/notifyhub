@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 
-import type { NotificationTemplate } from '../../../src/modules/notifications/domain/notification-template.js';
+import type { NotificationTemplate } from '@modules/notifications/domain/notification-template.js';
 import type {
   CreateNotificationTemplateInput,
   NotificationTemplateRepository,
-} from '../../../src/modules/notifications/application/notification-template-repository.js';
+} from '@modules/notifications/application/notification-template-repository.js';
 
 export class InMemoryNotificationTemplateRepository implements NotificationTemplateRepository {
   public readonly templates = new Map<string, NotificationTemplate>();

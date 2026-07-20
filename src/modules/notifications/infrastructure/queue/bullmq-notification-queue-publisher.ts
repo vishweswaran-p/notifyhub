@@ -4,8 +4,8 @@ import {
   notificationDeliveryQueueName,
   type NotificationDeliveryJobPayload,
   type NotificationQueuePublisher,
-} from '../../application/notification-queue-publisher.js';
-import { parseRedisConnectionOptions } from '../../../../shared/queue/redis-connection-options.js';
+} from '@modules/notifications/application/notification-queue-publisher.js';
+import { parseRedisConnectionOptions } from '@shared/queue/redis-connection-options.js';
 
 export class BullMqNotificationQueuePublisher implements NotificationQueuePublisher {
   private readonly queue: Queue<NotificationDeliveryJobPayload>;

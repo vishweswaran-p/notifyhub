@@ -1,5 +1,5 @@
-import { loadConfig } from '../../shared/config/environment.js';
-import { initializeOpenTelemetry } from '../../shared/observability/tracing.js';
+import { loadConfig } from '@shared/config/environment.js';
+import { initializeOpenTelemetry } from '@shared/observability/tracing.js';
 
 const config = loadConfig();
 const telemetry = initializeOpenTelemetry(config);
@@ -11,12 +11,12 @@ const [
   { createPostgresPool },
   { createLogger },
 ] = await Promise.all([
-  import('../../modules/notifications/application/deliver-notification-use-case.js'),
-  import('../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
-  import('../../modules/notifications/infrastructure/providers/notification-provider-registry-factory.js'),
-  import('../../modules/notifications/infrastructure/worker/notification-delivery-worker.js'),
-  import('../../shared/database/postgres.js'),
-  import('../../shared/observability/logger.js'),
+  import('@modules/notifications/application/deliver-notification-use-case.js'),
+  import('@modules/notifications/infrastructure/persistence/postgres-notification-repository.js'),
+  import('@modules/notifications/infrastructure/providers/notification-provider-registry-factory.js'),
+  import('@modules/notifications/infrastructure/worker/notification-delivery-worker.js'),
+  import('@shared/database/postgres.js'),
+  import('@shared/observability/logger.js'),
 ]);
 const logger = createLogger(config);
 const pool = createPostgresPool(config);

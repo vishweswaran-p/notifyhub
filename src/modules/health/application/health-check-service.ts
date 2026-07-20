@@ -1,7 +1,7 @@
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
 
-import type { AppConfig } from '../../../shared/config/environment.js';
+import type { AppConfig } from '@shared/config/environment.js';
 import type { FastifyBaseLogger } from 'fastify';
 
 type DependencyStatus = 'up' | 'down';

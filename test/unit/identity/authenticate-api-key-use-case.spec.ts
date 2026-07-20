@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiKeySecretService } from '../../../src/modules/identity/application/api-key-secret-service.js';
-import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/application/authenticate-api-key-use-case.js';
-import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
-import { InvalidCredentialsError } from '../../../src/modules/identity/application/identity-errors.js';
+import { ApiKeySecretService } from '@modules/identity/application/api-key-secret-service.js';
+import { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
+import { CreateTenantUseCase } from '@modules/identity/application/create-tenant-use-case.js';
+import { InvalidCredentialsError } from '@modules/identity/application/identity-errors.js';
 
 import { InMemoryIdentityRepository } from './in-memory-identity-repository.js';
 

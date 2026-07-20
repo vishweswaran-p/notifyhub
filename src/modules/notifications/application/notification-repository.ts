@@ -2,8 +2,8 @@ import type {
   Notification,
   NotificationChannel,
   NotificationStatus,
-} from '../domain/notification.js';
-import type { DeliveryAttempt } from '../domain/delivery-attempt.js';
+} from '@modules/notifications/domain/notification.js';
+import type { DeliveryAttempt } from '@modules/notifications/domain/delivery-attempt.js';
 
 export type CreateNotificationInput = {
   tenantId: string;

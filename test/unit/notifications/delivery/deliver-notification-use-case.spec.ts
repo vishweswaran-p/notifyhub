@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { DeliverNotificationUseCase } from '../../../../src/modules/notifications/application/deliver-notification-use-case.js';
-import { MockNotificationProvider } from '../../../../src/modules/notifications/infrastructure/providers/mock-notification-provider.js';
-import { StaticNotificationProviderRegistry } from '../../../../src/modules/notifications/infrastructure/providers/static-notification-provider-registry.js';
+import { DeliverNotificationUseCase } from '@modules/notifications/application/deliver-notification-use-case.js';
+import { MockNotificationProvider } from '@modules/notifications/infrastructure/providers/mock-notification-provider.js';
+import { StaticNotificationProviderRegistry } from '@modules/notifications/infrastructure/providers/static-notification-provider-registry.js';
 
-import { InMemoryNotificationRepository } from '../in-memory-notification-repository.js';
+import { InMemoryNotificationRepository } from '@test/unit/notifications/in-memory-notification-repository.js';
 
 const tenantId = '55a163d6-e3ca-4bb4-8a96-78d98381a96e';
 

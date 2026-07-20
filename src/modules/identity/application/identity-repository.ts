@@ -1,6 +1,10 @@
-import type { ApiKey, ApiKeySecret } from '../domain/api-key.js';
-import type { AuditActorType, AuditLog, AuditLogInput } from '../domain/audit-log.js';
-import type { Tenant } from '../domain/tenant.js';
+import type { ApiKey, ApiKeySecret } from '@modules/identity/domain/api-key.js';
+import type {
+  AuditActorType,
+  AuditLog,
+  AuditLogInput,
+} from '@modules/identity/domain/audit-log.js';
+import type { Tenant } from '@modules/identity/domain/tenant.js';
 
 export type CreateTenantInput = {
   name: string;

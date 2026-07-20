@@ -1,7 +1,7 @@
 import type {
   NotificationQueueMetrics,
   NotificationQueueMonitor,
-} from '../../../src/modules/notifications/application/notification-queue-monitor.js';
+} from '@modules/notifications/application/notification-queue-monitor.js';
 
 export class FakeNotificationQueueMonitor implements NotificationQueueMonitor {
   public metrics: NotificationQueueMetrics = {

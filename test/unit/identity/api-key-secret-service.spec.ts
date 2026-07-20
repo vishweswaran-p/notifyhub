@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ApiKeySecretService } from '../../../src/modules/identity/application/api-key-secret-service.js';
+import { ApiKeySecretService } from '@modules/identity/application/api-key-secret-service.js';
 
 describe('ApiKeySecretService', () => {
   it('generates opaque API keys and verifies only the original secret', () => {

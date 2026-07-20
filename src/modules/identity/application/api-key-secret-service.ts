@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 
-import type { ApiKeySecret } from '../domain/api-key.js';
+import type { ApiKeySecret } from '@modules/identity/domain/api-key.js';
 
 const apiKeyPrefix = 'nh_live';
 

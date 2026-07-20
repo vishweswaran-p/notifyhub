@@ -1,7 +1,7 @@
 import type { Pool } from 'pg';
 
-import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
-import type { Notification } from '../../domain/notification.js';
+import type { DeliveryAttempt } from '@modules/notifications/domain/delivery-attempt.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
 import type {
   ClaimDueScheduledInput,
   CreateNotificationInput,
@@ -14,7 +14,7 @@ import type {
   RecordDeliveryAttemptInput,
   ReplayDeadLetteredInput,
   TenantNotificationMetrics,
-} from '../../application/notification-repository.js';
+} from '@modules/notifications/application/notification-repository.js';
 
 type NotificationRow = {
   id: string;

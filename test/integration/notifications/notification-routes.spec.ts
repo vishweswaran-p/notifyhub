@@ -3,32 +3,32 @@ import fastify, { type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ApiKeySecretService } from '../../../src/modules/identity/application/api-key-secret-service.js';
-import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/application/authenticate-api-key-use-case.js';
-import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
-import { GetCurrentTenantUseCase } from '../../../src/modules/identity/application/get-current-tenant-use-case.js';
-import { ListAuditLogsUseCase } from '../../../src/modules/identity/application/list-audit-logs-use-case.js';
-import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
-import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
-import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
-import { GetNotificationMetricsUseCase } from '../../../src/modules/notifications/application/get-notification-metrics-use-case.js';
-import { GetQueueMetricsUseCase } from '../../../src/modules/notifications/application/get-queue-metrics-use-case.js';
-import { ListDeadLetterNotificationsUseCase } from '../../../src/modules/notifications/application/list-dead-letter-notifications-use-case.js';
-import { ListDeliveryAttemptsUseCase } from '../../../src/modules/notifications/application/list-delivery-attempts-use-case.js';
-import { ListNotificationsUseCase } from '../../../src/modules/notifications/application/list-notifications-use-case.js';
-import { ReplayDeadLetterNotificationUseCase } from '../../../src/modules/notifications/application/replay-dead-letter-notification-use-case.js';
-import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
-import { registerNotificationRoutes } from '../../../src/modules/notifications/interfaces/http/notification-routes.js';
-import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
+import { ApiKeySecretService } from '@modules/identity/application/api-key-secret-service.js';
+import { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
+import { CreateTenantUseCase } from '@modules/identity/application/create-tenant-use-case.js';
+import { GetCurrentTenantUseCase } from '@modules/identity/application/get-current-tenant-use-case.js';
+import { ListAuditLogsUseCase } from '@modules/identity/application/list-audit-logs-use-case.js';
+import { registerIdentityRoutes } from '@modules/identity/interfaces/http/identity-routes.js';
+import { CreateNotificationTemplateUseCase } from '@modules/notifications/application/create-notification-template-use-case.js';
+import { CreateNotificationUseCase } from '@modules/notifications/application/create-notification-use-case.js';
+import { GetNotificationMetricsUseCase } from '@modules/notifications/application/get-notification-metrics-use-case.js';
+import { GetQueueMetricsUseCase } from '@modules/notifications/application/get-queue-metrics-use-case.js';
+import { ListDeadLetterNotificationsUseCase } from '@modules/notifications/application/list-dead-letter-notifications-use-case.js';
+import { ListDeliveryAttemptsUseCase } from '@modules/notifications/application/list-delivery-attempts-use-case.js';
+import { ListNotificationsUseCase } from '@modules/notifications/application/list-notifications-use-case.js';
+import { ReplayDeadLetterNotificationUseCase } from '@modules/notifications/application/replay-dead-letter-notification-use-case.js';
+import { TemplateRenderer } from '@modules/notifications/application/template-renderer.js';
+import { registerNotificationRoutes } from '@modules/notifications/interfaces/http/notification-routes.js';
+import { registerErrorHandler } from '@shared/http/error-handler.js';
 
-import { InMemoryIdentityRepository } from '../../unit/identity/in-memory-identity-repository.js';
-import { FakeNotificationQueueMonitor } from '../../unit/notifications/fake-notification-queue-monitor.js';
-import { FakeNotificationQueuePublisher } from '../../unit/notifications/fake-notification-queue-publisher.js';
-import { InMemoryNotificationRepository } from '../../unit/notifications/in-memory-notification-repository.js';
-import { InMemoryNotificationTemplateRepository } from '../../unit/notifications/in-memory-notification-template-repository.js';
-import { FakeTenantRateLimiter } from '../../unit/notifications/rate-limit/fake-tenant-rate-limiter.js';
+import { InMemoryIdentityRepository } from '@test/unit/identity/in-memory-identity-repository.js';
+import { FakeNotificationQueueMonitor } from '@test/unit/notifications/fake-notification-queue-monitor.js';
+import { FakeNotificationQueuePublisher } from '@test/unit/notifications/fake-notification-queue-publisher.js';
+import { InMemoryNotificationRepository } from '@test/unit/notifications/in-memory-notification-repository.js';
+import { InMemoryNotificationTemplateRepository } from '@test/unit/notifications/in-memory-notification-template-repository.js';
+import { FakeTenantRateLimiter } from '@test/unit/notifications/rate-limit/fake-tenant-rate-limiter.js';
 
-import type { TenantNotificationPolicyRepository } from '../../../src/modules/notifications/application/rate-limit/tenant-notification-policy-repository.js';
+import type { TenantNotificationPolicyRepository } from '@modules/notifications/application/rate-limit/tenant-notification-policy-repository.js';
 
 describe('notification routes', () => {
   let app: FastifyInstance;

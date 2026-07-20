@@ -1,4 +1,4 @@
-import type { AuthPrincipal } from '../../identity/application/auth-principal.js';
+import type { AuthPrincipal } from '@modules/identity/application/auth-principal.js';
 import type {
   NotificationRepository,
   TenantNotificationMetrics,

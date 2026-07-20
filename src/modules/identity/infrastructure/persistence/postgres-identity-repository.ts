@@ -1,15 +1,15 @@
 import type { Pool, PoolClient } from 'pg';
 
-import type { ApiKey } from '../../domain/api-key.js';
-import type { AuditLog, AuditLogInput } from '../../domain/audit-log.js';
-import type { Tenant } from '../../domain/tenant.js';
+import type { ApiKey } from '@modules/identity/domain/api-key.js';
+import type { AuditLog, AuditLogInput } from '@modules/identity/domain/audit-log.js';
+import type { Tenant } from '@modules/identity/domain/tenant.js';
 import type {
   CreatedTenantCredentials,
   CreateTenantInput,
   IdentityRepository,
   ListAuditLogsInput,
   ListAuditLogsResult,
-} from '../../application/identity-repository.js';
+} from '@modules/identity/application/identity-repository.js';
 
 type TenantRow = {
   id: string;

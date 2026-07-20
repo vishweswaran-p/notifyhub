@@ -3,14 +3,14 @@ import { Worker } from 'bullmq';
 import {
   notificationDeliveryQueueName,
   type NotificationDeliveryJobPayload,
-} from '../../application/notification-queue-publisher.js';
-import { parseRedisConnectionOptions } from '../../../../shared/queue/redis-connection-options.js';
+} from '@modules/notifications/application/notification-queue-publisher.js';
+import { parseRedisConnectionOptions } from '@shared/queue/redis-connection-options.js';
 
 import type { Logger } from 'pino';
 import type {
   DeliverNotificationResult,
   DeliverNotificationUseCase,
-} from '../../application/deliver-notification-use-case.js';
+} from '@modules/notifications/application/deliver-notification-use-case.js';
 
 export class NotificationDeliveryWorker {
   private readonly worker: Worker<NotificationDeliveryJobPayload, DeliverNotificationResult>;

@@ -1,12 +1,15 @@
 import { createHash } from 'node:crypto';
 
-import { ProviderDeliveryError } from '../../application/providers/provider-delivery-error.js';
+import { ProviderDeliveryError } from '@modules/notifications/application/providers/provider-delivery-error.js';
 
 import type {
   NotificationProvider,
   ProviderDeliveryResult,
-} from '../../application/providers/notification-provider.js';
-import type { Notification, NotificationChannel } from '../../domain/notification.js';
+} from '@modules/notifications/application/providers/notification-provider.js';
+import type {
+  Notification,
+  NotificationChannel,
+} from '@modules/notifications/domain/notification.js';
 
 export class MockNotificationProvider implements NotificationProvider {
   public readonly name: string;

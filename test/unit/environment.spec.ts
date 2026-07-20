@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { loadConfig } from '../../src/shared/config/environment.js';
+import { loadConfig } from '@shared/config/environment.js';
 
 describe('loadConfig', () => {
   it('loads safe defaults for local development', () => {

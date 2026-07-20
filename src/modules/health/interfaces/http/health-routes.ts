@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 
-import type { HealthCheckService } from '../../application/health-check-service.js';
+import type { HealthCheckService } from '@modules/health/application/health-check-service.js';
 
 export function registerHealthRoutes(
   app: FastifyInstance,

@@ -1,7 +1,7 @@
 import type {
   NotificationDeliveryJobPayload,
   NotificationQueuePublisher,
-} from '../../../src/modules/notifications/application/notification-queue-publisher.js';
+} from '@modules/notifications/application/notification-queue-publisher.js';
 
 export class FakeNotificationQueuePublisher implements NotificationQueuePublisher {
   public readonly jobs: Array<{

@@ -3,13 +3,13 @@ import { Queue } from 'bullmq';
 import {
   notificationDeliveryQueueName,
   type NotificationDeliveryJobPayload,
-} from '../../application/notification-queue-publisher.js';
-import { parseRedisConnectionOptions } from '../../../../shared/queue/redis-connection-options.js';
+} from '@modules/notifications/application/notification-queue-publisher.js';
+import { parseRedisConnectionOptions } from '@shared/queue/redis-connection-options.js';
 
 import type {
   NotificationQueueMetrics,
   NotificationQueueMonitor,
-} from '../../application/notification-queue-monitor.js';
+} from '@modules/notifications/application/notification-queue-monitor.js';
 
 export class BullMqNotificationQueueMonitor implements NotificationQueueMonitor {
   private readonly queue: Queue<NotificationDeliveryJobPayload>;

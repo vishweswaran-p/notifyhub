@@ -1,38 +1,38 @@
 import type { FastifyInstance } from 'fastify';
 
-import { ApplicationError } from '../../../../shared/errors/application-error.js';
+import { ApplicationError } from '@shared/errors/application-error.js';
 import {
   createRequireTenantAuth,
   requireAuth,
-} from '../../../identity/interfaces/http/auth-hooks.js';
+} from '@modules/identity/interfaces/http/auth-hooks.js';
 
-import type { AuthenticateApiKeyUseCase } from '../../../identity/application/authenticate-api-key-use-case.js';
+import type { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
 import type {
   CreateNotificationTemplateCommand,
   CreateNotificationTemplateUseCase,
-} from '../../application/create-notification-template-use-case.js';
+} from '@modules/notifications/application/create-notification-template-use-case.js';
 import type {
   CreateNotificationCommand,
   CreateNotificationUseCase,
-} from '../../application/create-notification-use-case.js';
-import type { GetNotificationMetricsUseCase } from '../../application/get-notification-metrics-use-case.js';
-import type { GetQueueMetricsUseCase } from '../../application/get-queue-metrics-use-case.js';
+} from '@modules/notifications/application/create-notification-use-case.js';
+import type { GetNotificationMetricsUseCase } from '@modules/notifications/application/get-notification-metrics-use-case.js';
+import type { GetQueueMetricsUseCase } from '@modules/notifications/application/get-queue-metrics-use-case.js';
 import type {
   ListDeadLetterNotificationsQuery,
   ListDeadLetterNotificationsUseCase,
-} from '../../application/list-dead-letter-notifications-use-case.js';
+} from '@modules/notifications/application/list-dead-letter-notifications-use-case.js';
 import type {
   ListDeliveryAttemptsQuery,
   ListDeliveryAttemptsUseCase,
-} from '../../application/list-delivery-attempts-use-case.js';
+} from '@modules/notifications/application/list-delivery-attempts-use-case.js';
 import type {
   ListNotificationsQuery,
   ListNotificationsUseCase,
-} from '../../application/list-notifications-use-case.js';
-import type { ReplayDeadLetterNotificationUseCase } from '../../application/replay-dead-letter-notification-use-case.js';
-import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
-import type { Notification } from '../../domain/notification.js';
-import type { NotificationTemplate } from '../../domain/notification-template.js';
+} from '@modules/notifications/application/list-notifications-use-case.js';
+import type { ReplayDeadLetterNotificationUseCase } from '@modules/notifications/application/replay-dead-letter-notification-use-case.js';
+import type { DeliveryAttempt } from '@modules/notifications/domain/delivery-attempt.js';
+import type { Notification } from '@modules/notifications/domain/notification.js';
+import type { NotificationTemplate } from '@modules/notifications/domain/notification-template.js';
 
 type RegisterNotificationRoutesDependencies = {
   authenticateApiKeyUseCase: AuthenticateApiKeyUseCase;

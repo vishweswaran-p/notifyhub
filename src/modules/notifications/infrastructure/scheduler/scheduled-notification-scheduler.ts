@@ -1,6 +1,6 @@
 import type { Logger } from 'pino';
 
-import type { PromoteScheduledNotificationsUseCase } from '../../application/promote-scheduled-notifications-use-case.js';
+import type { PromoteScheduledNotificationsUseCase } from '@modules/notifications/application/promote-scheduled-notifications-use-case.js';
 
 export class ScheduledNotificationScheduler {
   private interval: NodeJS.Timeout | null = null;

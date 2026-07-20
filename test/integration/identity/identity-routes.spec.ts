@@ -2,15 +2,15 @@ import jwt from '@fastify/jwt';
 import fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { ApiKeySecretService } from '../../../src/modules/identity/application/api-key-secret-service.js';
-import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/application/authenticate-api-key-use-case.js';
-import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
-import { GetCurrentTenantUseCase } from '../../../src/modules/identity/application/get-current-tenant-use-case.js';
-import { ListAuditLogsUseCase } from '../../../src/modules/identity/application/list-audit-logs-use-case.js';
-import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
-import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
+import { ApiKeySecretService } from '@modules/identity/application/api-key-secret-service.js';
+import { AuthenticateApiKeyUseCase } from '@modules/identity/application/authenticate-api-key-use-case.js';
+import { CreateTenantUseCase } from '@modules/identity/application/create-tenant-use-case.js';
+import { GetCurrentTenantUseCase } from '@modules/identity/application/get-current-tenant-use-case.js';
+import { ListAuditLogsUseCase } from '@modules/identity/application/list-audit-logs-use-case.js';
+import { registerIdentityRoutes } from '@modules/identity/interfaces/http/identity-routes.js';
+import { registerErrorHandler } from '@shared/http/error-handler.js';
 
-import { InMemoryIdentityRepository } from '../../unit/identity/in-memory-identity-repository.js';
+import { InMemoryIdentityRepository } from '@test/unit/identity/in-memory-identity-repository.js';
 
 describe('identity routes', () => {
   let app: FastifyInstance;

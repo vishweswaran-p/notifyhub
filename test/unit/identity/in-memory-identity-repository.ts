@@ -1,15 +1,15 @@
 import { randomUUID } from 'node:crypto';
 
-import type { ApiKey } from '../../../src/modules/identity/domain/api-key.js';
-import type { AuditLog, AuditLogInput } from '../../../src/modules/identity/domain/audit-log.js';
-import type { Tenant } from '../../../src/modules/identity/domain/tenant.js';
+import type { ApiKey } from '@modules/identity/domain/api-key.js';
+import type { AuditLog, AuditLogInput } from '@modules/identity/domain/audit-log.js';
+import type { Tenant } from '@modules/identity/domain/tenant.js';
 import type {
   CreatedTenantCredentials,
   CreateTenantInput,
   IdentityRepository,
   ListAuditLogsInput,
   ListAuditLogsResult,
-} from '../../../src/modules/identity/application/identity-repository.js';
+} from '@modules/identity/application/identity-repository.js';
 
 export class InMemoryIdentityRepository implements IdentityRepository {
   public readonly tenants = new Map<string, Tenant>();
