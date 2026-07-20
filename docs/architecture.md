@@ -24,98 +24,56 @@ flowchart LR
 - Infrastructure adapters implement repositories, providers, queue publishers, and external clients.
 - Interfaces expose HTTP routes and translate transport concerns into application commands.
 
-## Implemented Foundation
+## System Capabilities
 
-The first implementation phase establishes the runtime foundation:
+NotifyHub is organized around durable notification intake, asynchronous delivery, and tenant-scoped operational visibility.
 
-- Strict TypeScript configuration.
-- Fastify API composition.
-- Structured logging.
-- Environment validation.
-- Health checks for liveness and readiness.
-- Docker Compose for PostgreSQL and Redis.
-- CI quality gates.
+### Runtime And Infrastructure
 
-The second phase adds the identity foundation:
-
+- Strict TypeScript configuration with Fastify API composition.
 - PostgreSQL migration runner with append-only SQL migrations.
-- Tenants with status and per-minute rate limit configuration.
-- One-time API key issuance with hashed storage.
-- API-key authentication through `x-api-key` or `Authorization: ApiKey ...`.
-- Short-lived JWT issuance for tenant-scoped API access.
-- Authenticated request context for downstream modules.
-- Audit log persistence for identity events.
+- PostgreSQL persistence for tenants, credentials, templates, notifications, delivery attempts, and audit logs.
+- Redis-backed rate limiting and BullMQ job orchestration.
+- Structured logging, environment validation, health checks, Docker Compose, and CI quality gates.
 
-The third phase adds notification intake:
+### Identity And Tenant Isolation
 
-- Tenant-authenticated `POST /v1/notifications`.
-- Email, SMS, push, and webhook channel modeling.
-- Durable notification persistence with tenant-scoped idempotency keys.
-- Immediate and scheduled notification state.
-- BullMQ enqueueing with a stable `notification-delivery` job payload.
+- Tenants have status and per-minute notification rate-limit configuration.
+- API keys are issued once and stored only as hashed credentials.
+- Tenant APIs support `x-api-key`, `Authorization: ApiKey ...`, and short-lived Bearer JWT authentication.
+- Authenticated request context carries tenant and actor information into downstream use cases.
+- Audit logs capture identity events and are readable only within the authenticated tenant scope.
+
+### Notification Lifecycle
+
+- Tenants submit notifications through `POST /v1/notifications`.
+- Supported channels are email, SMS, push, and webhook.
+- Idempotency keys prevent duplicate notification creation for retried client requests.
 - Future scheduled notifications remain durable in PostgreSQL until the scheduler promotes them.
+- Due and immediate notifications are published to the BullMQ `notification-delivery` queue.
+- The delivery worker records processing, delivered, failed, and dead-letter outcomes.
+- Retry behavior uses environment-driven max attempts and exponential backoff.
+- Exhausted delivery failures transition notifications to `dead_lettered`.
 
-The fourth phase adds delivery processing:
+### Templates And Rendering
 
-- BullMQ worker consumption for `notification-delivery` jobs.
-- Provider abstraction by channel.
-- Mock email, SMS, push, and webhook providers.
-- Notification state transitions from queued/scheduled to processing, delivered, or failed.
-- Append-only delivery attempt history with provider metadata and errors.
+- Tenants create channel-specific templates through `POST /v1/templates`.
+- Templates support `{{variable}}` placeholders for subject and body rendering.
+- Missing variables are rejected before persistence or queueing.
+- Accepted notifications store rendered subject/body snapshots and retain the source template id.
 
-The fifth phase adds retry and dead-letter behavior:
+### Reads And Analytics
 
-- Environment-driven delivery max attempts and exponential backoff.
-- BullMQ retries for retryable provider failures.
-- Durable failed state between attempts.
-- Final exhausted failures transition notifications to `dead_lettered`.
-- Last provider error metadata is stored on the notification record.
+- `GET /v1/notifications` lists tenant notifications with pagination and filters.
+- `GET /v1/notifications/:notificationId/delivery-attempts` exposes provider attempt history for a tenant-owned notification.
+- `GET /v1/analytics/notifications` returns tenant notification totals grouped by status, channel, and delivery attempt outcome.
+- `GET /v1/audit-logs` returns tenant-scoped audit history with pagination and filters.
 
-The sixth phase adds notification templates:
+### Operations
 
-- Tenant-authenticated `POST /v1/templates`.
-- Channel-specific subject/body templates.
-- `{{variable}}` placeholder rendering during notification intake.
-- Missing variable validation before enqueueing.
-- Notifications persist rendered subject/body snapshots plus the source template id.
-
-The seventh phase adds tenant rate limiting:
-
-- Tenant `rate_limit_per_minute` policy is enforced during notification intake.
-- Redis fixed-window counters track accepted notification commands per tenant.
-- Idempotent notification replays return the existing notification without consuming quota.
-- Exceeded limits return `429 NOTIFICATION_RATE_LIMIT_EXCEEDED` before persistence or enqueueing.
-
-The eighth phase adds notification status and analytics reads:
-
-- Tenant-authenticated `GET /v1/notifications`.
-- Pagination with `limit` and `offset`.
-- Filtering by notification `status` and `channel`.
-- Tenant notification metrics grouped by status and channel.
-- Delivery attempt totals for delivered and failed provider attempts.
-
-The ninth phase adds audit log reads:
-
-- Tenant-authenticated `GET /v1/audit-logs`.
-- Pagination with `limit` and `offset`.
-- Filtering by `actorType`, `action`, and `resourceType`.
-- Tenant scoping so API clients cannot read cross-tenant audit history.
-
-The tenth phase adds scheduled notification promotion:
-
-- Dedicated scheduler runtime polling PostgreSQL for due scheduled notifications.
-- Atomic scheduled-to-queued claims using row locks.
-- Configurable scheduler poll interval and batch size.
-- Promotion to BullMQ delivery jobs only when scheduled notifications are due.
-
-The eleventh phase adds delivery attempt history reads:
-
-- Tenant-authenticated `GET /v1/notifications/:notificationId/delivery-attempts`.
-- Pagination with `limit` and `offset`.
-- Tenant-scoped notification ownership check before returning attempts.
-- Provider metadata, attempt status, error fields, and timing data in the response.
-
-Queue monitoring and additional analytics dimensions can be implemented after this scheduling and delivery-history foundation is stable.
+- `GET /v1/queues/notification-delivery/metrics` exposes BullMQ job counts for delivery queue monitoring.
+- `GET /v1/dlq/notifications` lists tenant dead-lettered notifications with pagination and channel filtering.
+- `POST /v1/dlq/notifications/:notificationId/replay` moves a dead-lettered notification back to `queued` and publishes a fresh delivery job.
 
 ## Identity Flow
 
