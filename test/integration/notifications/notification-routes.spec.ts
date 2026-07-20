@@ -12,13 +12,17 @@ import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces
 import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
 import { GetNotificationMetricsUseCase } from '../../../src/modules/notifications/application/get-notification-metrics-use-case.js';
+import { GetQueueMetricsUseCase } from '../../../src/modules/notifications/application/get-queue-metrics-use-case.js';
+import { ListDeadLetterNotificationsUseCase } from '../../../src/modules/notifications/application/list-dead-letter-notifications-use-case.js';
 import { ListDeliveryAttemptsUseCase } from '../../../src/modules/notifications/application/list-delivery-attempts-use-case.js';
 import { ListNotificationsUseCase } from '../../../src/modules/notifications/application/list-notifications-use-case.js';
+import { ReplayDeadLetterNotificationUseCase } from '../../../src/modules/notifications/application/replay-dead-letter-notification-use-case.js';
 import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
 import { registerNotificationRoutes } from '../../../src/modules/notifications/interfaces/http/notification-routes.js';
 import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
 
 import { InMemoryIdentityRepository } from '../../unit/identity/in-memory-identity-repository.js';
+import { FakeNotificationQueueMonitor } from '../../unit/notifications/fake-notification-queue-monitor.js';
 import { FakeNotificationQueuePublisher } from '../../unit/notifications/fake-notification-queue-publisher.js';
 import { InMemoryNotificationRepository } from '../../unit/notifications/in-memory-notification-repository.js';
 import { InMemoryNotificationTemplateRepository } from '../../unit/notifications/in-memory-notification-template-repository.js';
@@ -29,6 +33,7 @@ import type { TenantNotificationPolicyRepository } from '../../../src/modules/no
 describe('notification routes', () => {
   let app: FastifyInstance;
   let notificationRepository: InMemoryNotificationRepository;
+  let queueMonitor: FakeNotificationQueueMonitor;
   let queuePublisher: FakeNotificationQueuePublisher;
   let rateLimiter: FakeTenantRateLimiter;
 
@@ -36,6 +41,7 @@ describe('notification routes', () => {
     const identityRepository = new InMemoryIdentityRepository();
     notificationRepository = new InMemoryNotificationRepository();
     const notificationTemplateRepository = new InMemoryNotificationTemplateRepository();
+    queueMonitor = new FakeNotificationQueueMonitor();
     queuePublisher = new FakeNotificationQueuePublisher();
     rateLimiter = new FakeTenantRateLimiter();
     const tenantPolicyRepository: TenantNotificationPolicyRepository = {
@@ -80,8 +86,16 @@ describe('notification routes', () => {
         queuePublisher,
       ),
       getNotificationMetricsUseCase: new GetNotificationMetricsUseCase(notificationRepository),
+      getQueueMetricsUseCase: new GetQueueMetricsUseCase(queueMonitor),
+      listDeadLetterNotificationsUseCase: new ListDeadLetterNotificationsUseCase(
+        notificationRepository,
+      ),
       listDeliveryAttemptsUseCase: new ListDeliveryAttemptsUseCase(notificationRepository),
       listNotificationsUseCase: new ListNotificationsUseCase(notificationRepository),
+      replayDeadLetterNotificationUseCase: new ReplayDeadLetterNotificationUseCase(
+        notificationRepository,
+        queuePublisher,
+      ),
     });
   });
 
@@ -241,6 +255,151 @@ describe('notification routes', () => {
           delivered: 0,
           failed: 0,
         },
+      },
+    });
+  });
+
+  it('returns notification delivery queue metrics', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    queueMonitor.metrics = {
+      name: 'notification-delivery',
+      counts: {
+        waiting: 2,
+        active: 1,
+        delayed: 3,
+        completed: 10,
+        failed: 4,
+        paused: 0,
+      },
+    };
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/queues/notification-delivery/metrics',
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({
+      queue: queueMonitor.metrics,
+    });
+  });
+
+  it('lists dead-lettered notifications for a tenant', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    const notificationId = await createDeadLetteredNotification(
+      app,
+      notificationRepository,
+      apiKey,
+      {
+        idempotencyKey: 'dlq-list-1',
+        payload: {
+          channel: 'webhook',
+          recipient: 'https://example.com/webhook',
+          body: '{}',
+        },
+      },
+    );
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/dlq/notifications?channel=webhook&limit=10&offset=0',
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      notifications: [
+        {
+          id: notificationId,
+          channel: 'webhook',
+          status: 'dead_lettered',
+          lastErrorCode: 'PROVIDER_DELIVERY_FAILED',
+          lastErrorMessage: 'Provider rejected notification.',
+        },
+      ],
+      pagination: {
+        limit: 10,
+        offset: 0,
+        total: 1,
+      },
+    });
+  });
+
+  it('replays a dead-lettered notification and enqueues delivery', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    const notificationId = await createDeadLetteredNotification(
+      app,
+      notificationRepository,
+      apiKey,
+      {
+        idempotencyKey: 'dlq-replay-1',
+        payload: {
+          channel: 'email',
+          recipient: 'user@example.com',
+          body: 'Hello',
+        },
+      },
+    );
+    queuePublisher.jobs.length = 0;
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/v1/dlq/notifications/${notificationId}/replay`,
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json()).toMatchObject({
+      notification: {
+        id: notificationId,
+        status: 'queued',
+        deadLetteredAt: null,
+        lastErrorCode: null,
+        lastErrorMessage: null,
+      },
+    });
+    expect(queuePublisher.jobs).toEqual([
+      {
+        payload: {
+          notificationId,
+          tenantId: response.json<{ notification: { tenantId: string } }>().notification.tenantId,
+          channel: 'email',
+        },
+        delayMs: undefined,
+      },
+    ]);
+  });
+
+  it('returns 404 when replaying a non-dead-lettered notification', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    const notificationId = await createNotification(app, apiKey, {
+      idempotencyKey: 'dlq-replay-missing-1',
+      payload: {
+        channel: 'sms',
+        recipient: '+15555550123',
+        body: 'Hello',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/v1/dlq/notifications/${notificationId}/replay`,
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'DEAD_LETTER_NOTIFICATION_NOT_FOUND',
       },
     });
   });
@@ -483,4 +642,38 @@ async function createNotification(
   });
 
   return response.json<{ notification: { id: string } }>().notification.id;
+}
+
+async function createDeadLetteredNotification(
+  app: FastifyInstance,
+  repository: InMemoryNotificationRepository,
+  apiKey: string,
+  params: {
+    idempotencyKey: string;
+    payload: Record<string, unknown>;
+  },
+): Promise<string> {
+  const notificationId = await createNotification(app, apiKey, params);
+  const notification = repository.notifications.get(notificationId);
+
+  if (!notification) {
+    throw new Error('Expected notification to be created.');
+  }
+
+  const processing = await repository.markProcessing(notification.id, notification.tenantId);
+
+  if (!processing) {
+    throw new Error('Expected notification to transition to processing.');
+  }
+
+  const deadLettered = await repository.markDeadLettered(notification.id, notification.tenantId, {
+    errorCode: 'PROVIDER_DELIVERY_FAILED',
+    errorMessage: 'Provider rejected notification.',
+  });
+
+  if (!deadLettered) {
+    throw new Error('Expected notification to transition to dead_lettered.');
+  }
+
+  return notificationId;
 }

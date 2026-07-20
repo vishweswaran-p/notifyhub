@@ -16,6 +16,8 @@ The system is built as a modular Node.js service with independently runnable API
 - Mock providers for all notification channels.
 - Retry with exponential backoff and dead-letter status.
 - Delivery attempt history API with provider metadata.
+- Queue monitoring metrics for the notification delivery queue.
+- Dead-letter queue listing and replay.
 - Notification listing, filtering, pagination, and analytics.
 - Tenant-scoped audit log reads.
 - OpenAPI/Swagger documentation.

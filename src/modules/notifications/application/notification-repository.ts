@@ -23,6 +23,7 @@ export type CreateNotificationInput = {
 export interface NotificationRepository {
   create(input: CreateNotificationInput): Promise<Notification>;
   claimDueScheduled(input: ClaimDueScheduledInput): Promise<Notification[]>;
+  replayDeadLettered(input: ReplayDeadLetteredInput): Promise<Notification | null>;
   listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult>;
   listDeliveryAttempts(input: ListDeliveryAttemptsInput): Promise<ListDeliveryAttemptsResult>;
   getTenantMetrics(input: GetTenantNotificationMetricsInput): Promise<TenantNotificationMetrics>;
@@ -78,6 +79,12 @@ export type ListNotificationsInput = {
 export type ListNotificationsResult = {
   items: Notification[];
   total: number;
+};
+
+export type ReplayDeadLetteredInput = {
+  tenantId: string;
+  notificationId: string;
+  replayedAt: Date;
 };
 
 export type ListDeliveryAttemptsInput = {

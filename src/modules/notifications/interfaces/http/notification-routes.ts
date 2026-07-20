@@ -16,6 +16,11 @@ import type {
   CreateNotificationUseCase,
 } from '../../application/create-notification-use-case.js';
 import type { GetNotificationMetricsUseCase } from '../../application/get-notification-metrics-use-case.js';
+import type { GetQueueMetricsUseCase } from '../../application/get-queue-metrics-use-case.js';
+import type {
+  ListDeadLetterNotificationsQuery,
+  ListDeadLetterNotificationsUseCase,
+} from '../../application/list-dead-letter-notifications-use-case.js';
 import type {
   ListDeliveryAttemptsQuery,
   ListDeliveryAttemptsUseCase,
@@ -24,6 +29,7 @@ import type {
   ListNotificationsQuery,
   ListNotificationsUseCase,
 } from '../../application/list-notifications-use-case.js';
+import type { ReplayDeadLetterNotificationUseCase } from '../../application/replay-dead-letter-notification-use-case.js';
 import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
 import type { Notification } from '../../domain/notification.js';
 import type { NotificationTemplate } from '../../domain/notification-template.js';
@@ -33,8 +39,11 @@ type RegisterNotificationRoutesDependencies = {
   createNotificationTemplateUseCase: CreateNotificationTemplateUseCase;
   createNotificationUseCase: CreateNotificationUseCase;
   getNotificationMetricsUseCase: GetNotificationMetricsUseCase;
+  getQueueMetricsUseCase: GetQueueMetricsUseCase;
+  listDeadLetterNotificationsUseCase: ListDeadLetterNotificationsUseCase;
   listDeliveryAttemptsUseCase: ListDeliveryAttemptsUseCase;
   listNotificationsUseCase: ListNotificationsUseCase;
+  replayDeadLetterNotificationUseCase: ReplayDeadLetterNotificationUseCase;
 };
 
 export function registerNotificationRoutes(
@@ -92,6 +101,59 @@ export function registerNotificationRoutes(
       return {
         notifications: result.items.map(serializeNotification),
         pagination: result.pagination,
+      };
+    },
+  );
+
+  app.get<{ Querystring: ListDeadLetterNotificationsQuery }>(
+    '/v1/dlq/notifications',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Dead Letter Queue'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        querystring: listDeadLetterNotificationsQuerySchema,
+        response: {
+          200: listDeadLetterNotificationsResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const result = await dependencies.listDeadLetterNotificationsUseCase.execute({
+        principal: requireAuth(request),
+        query: request.query,
+      });
+
+      return {
+        notifications: result.items.map(serializeNotification),
+        pagination: result.pagination,
+      };
+    },
+  );
+
+  app.post<{ Params: { notificationId: string } }>(
+    '/v1/dlq/notifications/:notificationId/replay',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Dead Letter Queue'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        params: notificationIdParamsSchema,
+        response: {
+          202: replayDeadLetterNotificationResponseSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const notification = await dependencies.replayDeadLetterNotificationUseCase.execute({
+        principal: requireAuth(request),
+        notificationId: request.params.notificationId,
+      });
+
+      reply.status(202);
+
+      return {
+        notification: serializeNotification(notification),
       };
     },
   );
@@ -177,6 +239,27 @@ export function registerNotificationRoutes(
 
       return {
         metrics,
+      };
+    },
+  );
+
+  app.get(
+    '/v1/queues/notification-delivery/metrics',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Queues'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        response: {
+          200: queueMetricsResponseSchema,
+        },
+      },
+    },
+    async () => {
+      const metrics = await dependencies.getQueueMetricsUseCase.execute();
+
+      return {
+        queue: metrics,
       };
     },
   );
@@ -341,6 +424,14 @@ const notificationResponseSchema = {
   },
 } as const;
 
+const replayDeadLetterNotificationResponseSchema = {
+  type: 'object',
+  required: ['notification'],
+  properties: {
+    notification: notificationSchema,
+  },
+} as const;
+
 const listNotificationsQuerySchema = {
   type: 'object',
   additionalProperties: false,
@@ -356,6 +447,36 @@ const listNotificationsQuerySchema = {
 } as const;
 
 const listNotificationsResponseSchema = {
+  type: 'object',
+  required: ['notifications', 'pagination'],
+  properties: {
+    notifications: {
+      type: 'array',
+      items: notificationSchema,
+    },
+    pagination: {
+      type: 'object',
+      required: ['limit', 'offset', 'total'],
+      properties: {
+        limit: { type: 'integer' },
+        offset: { type: 'integer' },
+        total: { type: 'integer' },
+      },
+    },
+  },
+} as const;
+
+const listDeadLetterNotificationsQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+    channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
+  },
+} as const;
+
+const listDeadLetterNotificationsResponseSchema = {
   type: 'object',
   required: ['notifications', 'pagination'],
   properties: {
@@ -476,6 +597,32 @@ const notificationMetricsResponseSchema = {
             total: { type: 'integer' },
             delivered: { type: 'integer' },
             failed: { type: 'integer' },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+const queueMetricsResponseSchema = {
+  type: 'object',
+  required: ['queue'],
+  properties: {
+    queue: {
+      type: 'object',
+      required: ['name', 'counts'],
+      properties: {
+        name: { type: 'string' },
+        counts: {
+          type: 'object',
+          required: ['waiting', 'active', 'delayed', 'completed', 'failed', 'paused'],
+          properties: {
+            waiting: { type: 'integer' },
+            active: { type: 'integer' },
+            delayed: { type: 'integer' },
+            completed: { type: 'integer' },
+            failed: { type: 'integer' },
+            paused: { type: 'integer' },
           },
         },
       },

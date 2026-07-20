@@ -12,6 +12,7 @@ import type {
   ListNotificationsResult,
   NotificationRepository,
   RecordDeliveryAttemptInput,
+  ReplayDeadLetteredInput,
   TenantNotificationMetrics,
 } from '../../../src/modules/notifications/application/notification-repository.js';
 
@@ -78,6 +79,32 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     });
 
     return Promise.resolve(claimed);
+  }
+
+  public replayDeadLettered(input: ReplayDeadLetteredInput): Promise<Notification | null> {
+    const notification = this.notifications.get(input.notificationId);
+
+    if (
+      !notification ||
+      notification.tenantId !== input.tenantId ||
+      notification.status !== 'dead_lettered'
+    ) {
+      return Promise.resolve(null);
+    }
+
+    const updated: Notification = {
+      ...notification,
+      status: 'queued',
+      queuedAt: input.replayedAt,
+      deadLetteredAt: null,
+      lastErrorCode: null,
+      lastErrorMessage: null,
+      updatedAt: input.replayedAt,
+    };
+
+    this.notifications.set(notification.id, updated);
+
+    return Promise.resolve(updated);
   }
 
   public listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {

@@ -19,12 +19,16 @@ import { registerIdentityRoutes } from '../../modules/identity/interfaces/http/i
 import { CreateNotificationTemplateUseCase } from '../../modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../modules/notifications/application/create-notification-use-case.js';
 import { GetNotificationMetricsUseCase } from '../../modules/notifications/application/get-notification-metrics-use-case.js';
+import { GetQueueMetricsUseCase } from '../../modules/notifications/application/get-queue-metrics-use-case.js';
+import { ListDeadLetterNotificationsUseCase } from '../../modules/notifications/application/list-dead-letter-notifications-use-case.js';
 import { ListDeliveryAttemptsUseCase } from '../../modules/notifications/application/list-delivery-attempts-use-case.js';
 import { ListNotificationsUseCase } from '../../modules/notifications/application/list-notifications-use-case.js';
+import { ReplayDeadLetterNotificationUseCase } from '../../modules/notifications/application/replay-dead-letter-notification-use-case.js';
 import { TemplateRenderer } from '../../modules/notifications/application/template-renderer.js';
 import { PostgresNotificationTemplateRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-template-repository.js';
 import { PostgresNotificationRepository } from '../../modules/notifications/infrastructure/persistence/postgres-notification-repository.js';
 import { PostgresTenantNotificationPolicyRepository } from '../../modules/notifications/infrastructure/persistence/postgres-tenant-notification-policy-repository.js';
+import { BullMqNotificationQueueMonitor } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-monitor.js';
 import { BullMqNotificationQueuePublisher } from '../../modules/notifications/infrastructure/queue/bullmq-notification-queue-publisher.js';
 import { RedisTenantRateLimiter } from '../../modules/notifications/infrastructure/rate-limit/redis-tenant-rate-limiter.js';
 import { registerNotificationRoutes } from '../../modules/notifications/interfaces/http/notification-routes.js';
@@ -51,6 +55,7 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
     maxAttempts: config.DELIVERY_MAX_ATTEMPTS,
     retryBackoffMs: config.DELIVERY_RETRY_BACKOFF_MS,
   });
+  const notificationQueueMonitor = new BullMqNotificationQueueMonitor(config.REDIS_URL);
   const notificationRepository = new PostgresNotificationRepository(appPool);
   const notificationTemplateRepository = new PostgresNotificationTemplateRepository(appPool);
   const tenantNotificationPolicyRepository = new PostgresTenantNotificationPolicyRepository(
@@ -100,6 +105,7 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
 
   app.addHook('onClose', async () => {
     await healthCheckService.close();
+    await notificationQueueMonitor.close();
     await notificationQueuePublisher.close();
     tenantRateLimiter.disconnect();
     await appPool.end();
@@ -128,8 +134,16 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
       notificationQueuePublisher,
     ),
     getNotificationMetricsUseCase: new GetNotificationMetricsUseCase(notificationRepository),
+    getQueueMetricsUseCase: new GetQueueMetricsUseCase(notificationQueueMonitor),
+    listDeadLetterNotificationsUseCase: new ListDeadLetterNotificationsUseCase(
+      notificationRepository,
+    ),
     listDeliveryAttemptsUseCase: new ListDeliveryAttemptsUseCase(notificationRepository),
     listNotificationsUseCase: new ListNotificationsUseCase(notificationRepository),
+    replayDeadLetterNotificationUseCase: new ReplayDeadLetterNotificationUseCase(
+      notificationRepository,
+      notificationQueuePublisher,
+    ),
   });
 
   app.get(

@@ -12,6 +12,7 @@ import type {
   ListNotificationsResult,
   NotificationRepository,
   RecordDeliveryAttemptInput,
+  ReplayDeadLetteredInput,
   TenantNotificationMetrics,
 } from '../../application/notification-repository.js';
 
@@ -158,6 +159,27 @@ export class PostgresNotificationRepository implements NotificationRepository {
     );
 
     return result.rows.map(mapNotificationRow);
+  }
+
+  public async replayDeadLettered(input: ReplayDeadLetteredInput): Promise<Notification | null> {
+    const result = await this.pool.query<NotificationRow>(
+      `
+        update notifications
+        set
+          status = 'queued',
+          queued_at = $3,
+          dead_lettered_at = null,
+          last_error_code = null,
+          last_error_message = null,
+          updated_at = now()
+        where id = $1 and tenant_id = $2 and status = 'dead_lettered'
+        returning ${notificationColumns}
+      `,
+      [input.notificationId, input.tenantId, input.replayedAt],
+    );
+
+    const row = result.rows[0];
+    return row ? mapNotificationRow(row) : null;
   }
 
   public async listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {

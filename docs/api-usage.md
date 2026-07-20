@@ -144,6 +144,41 @@ curl 'http://localhost:3000/v1/notifications/<notification-id>/delivery-attempts
 
 The response includes provider name, attempt number, status, provider message id, error details, provider response metadata, and start/completion timestamps.
 
+## Queue Monitoring
+
+Read delivery queue metrics:
+
+```bash
+curl http://localhost:3000/v1/queues/notification-delivery/metrics \
+  -H 'x-api-key: <api-key>'
+```
+
+The response includes BullMQ job counts for waiting, active, delayed, completed, failed, and paused delivery jobs.
+
+## Dead Letter Queue
+
+List dead-lettered notifications:
+
+```bash
+curl 'http://localhost:3000/v1/dlq/notifications?limit=25&offset=0' \
+  -H 'x-api-key: <api-key>'
+```
+
+Supported filters:
+
+- `limit`
+- `offset`
+- `channel`
+
+Replay a dead-lettered notification:
+
+```bash
+curl -X POST http://localhost:3000/v1/dlq/notifications/<notification-id>/replay \
+  -H 'x-api-key: <api-key>'
+```
+
+Replay moves the notification back to `queued`, clears the current dead-letter marker and error fields, and publishes a new delivery job. Delivery attempt history remains intact.
+
 ## Audit Logs
 
 List tenant audit logs:
