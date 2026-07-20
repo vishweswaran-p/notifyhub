@@ -24,6 +24,7 @@ export interface NotificationRepository {
   create(input: CreateNotificationInput): Promise<Notification>;
   claimDueScheduled(input: ClaimDueScheduledInput): Promise<Notification[]>;
   listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult>;
+  listDeliveryAttempts(input: ListDeliveryAttemptsInput): Promise<ListDeliveryAttemptsResult>;
   getTenantMetrics(input: GetTenantNotificationMetricsInput): Promise<TenantNotificationMetrics>;
   findByIdForTenant(id: string, tenantId: string): Promise<Notification | null>;
   findByTenantAndIdempotencyKey(
@@ -78,11 +79,23 @@ export type ListNotificationsResult = {
   items: Notification[];
   total: number;
 };
+
+export type ListDeliveryAttemptsInput = {
+  tenantId: string;
+  notificationId: string;
+  limit: number;
+  offset: number;
+};
+
+export type ListDeliveryAttemptsResult = {
+  items: DeliveryAttempt[];
+  total: number;
+};
+
 export type ClaimDueScheduledInput = {
   now: Date;
   limit: number;
 };
-
 
 export type GetTenantNotificationMetricsInput = {
   tenantId: string;

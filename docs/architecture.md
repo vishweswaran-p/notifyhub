@@ -53,6 +53,7 @@ The third phase adds notification intake:
 - Durable notification persistence with tenant-scoped idempotency keys.
 - Immediate and scheduled notification state.
 - BullMQ enqueueing with a stable `notification-delivery` job payload.
+- Future scheduled notifications remain durable in PostgreSQL until the scheduler promotes them.
 
 The fourth phase adds delivery processing:
 
@@ -100,7 +101,21 @@ The ninth phase adds audit log reads:
 - Filtering by `actorType`, `action`, and `resourceType`.
 - Tenant scoping so API clients cannot read cross-tenant audit history.
 
-Queue monitoring and additional analytics dimensions can be implemented after this read foundation is stable.
+The tenth phase adds scheduled notification promotion:
+
+- Dedicated scheduler runtime polling PostgreSQL for due scheduled notifications.
+- Atomic scheduled-to-queued claims using row locks.
+- Configurable scheduler poll interval and batch size.
+- Promotion to BullMQ delivery jobs only when scheduled notifications are due.
+
+The eleventh phase adds delivery attempt history reads:
+
+- Tenant-authenticated `GET /v1/notifications/:notificationId/delivery-attempts`.
+- Pagination with `limit` and `offset`.
+- Tenant-scoped notification ownership check before returning attempts.
+- Provider metadata, attempt status, error fields, and timing data in the response.
+
+Queue monitoring and additional analytics dimensions can be implemented after this scheduling and delivery-history foundation is stable.
 
 ## Identity Flow
 
@@ -132,6 +147,7 @@ sequenceDiagram
   participant Client as Tenant App
   participant API as Fastify API
   participant DB as PostgreSQL
+  participant Scheduler as Scheduler
   participant Queue as BullMQ
 
   Client->>API: POST /v1/notifications with API key or JWT
@@ -146,8 +162,14 @@ sequenceDiagram
       API-->>Client: 429 Too Many Requests
     else Quota available
     API->>DB: Persist notification
+    alt scheduledAt is in the future
+      API-->>Client: 202 Accepted + status=scheduled
+      Scheduler->>DB: Claim due scheduled notifications
+      Scheduler->>Queue: Enqueue notification-delivery job
+    else immediate or due now
     API->>Queue: Enqueue notification-delivery job
     API-->>Client: 202 Accepted + idempotentReplay=false
+    end
     end
   end
 ```

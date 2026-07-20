@@ -15,7 +15,7 @@ The system is built as a modular Node.js service with independently runnable API
 - BullMQ delivery queue and worker process.
 - Mock providers for all notification channels.
 - Retry with exponential backoff and dead-letter status.
-- Delivery attempt history with provider metadata.
+- Delivery attempt history API with provider metadata.
 - Notification listing, filtering, pagination, and analytics.
 - Tenant-scoped audit log reads.
 - OpenAPI/Swagger documentation.
@@ -57,7 +57,7 @@ Run the worker in a separate terminal to process queued notification delivery jo
 npm run dev:worker
 ```
 
-The scheduler entrypoint is present for scheduled-notification processing and future recurring jobs:
+Run the scheduler in a separate terminal to promote due scheduled notifications into the delivery queue:
 
 ```bash
 npm run dev:scheduler

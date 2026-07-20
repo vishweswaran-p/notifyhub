@@ -12,6 +12,7 @@ import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces
 import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
 import { GetNotificationMetricsUseCase } from '../../../src/modules/notifications/application/get-notification-metrics-use-case.js';
+import { ListDeliveryAttemptsUseCase } from '../../../src/modules/notifications/application/list-delivery-attempts-use-case.js';
 import { ListNotificationsUseCase } from '../../../src/modules/notifications/application/list-notifications-use-case.js';
 import { TemplateRenderer } from '../../../src/modules/notifications/application/template-renderer.js';
 import { registerNotificationRoutes } from '../../../src/modules/notifications/interfaces/http/notification-routes.js';
@@ -27,12 +28,13 @@ import type { TenantNotificationPolicyRepository } from '../../../src/modules/no
 
 describe('notification routes', () => {
   let app: FastifyInstance;
+  let notificationRepository: InMemoryNotificationRepository;
   let queuePublisher: FakeNotificationQueuePublisher;
   let rateLimiter: FakeTenantRateLimiter;
 
   beforeEach(async () => {
     const identityRepository = new InMemoryIdentityRepository();
-    const notificationRepository = new InMemoryNotificationRepository();
+    notificationRepository = new InMemoryNotificationRepository();
     const notificationTemplateRepository = new InMemoryNotificationTemplateRepository();
     queuePublisher = new FakeNotificationQueuePublisher();
     rateLimiter = new FakeTenantRateLimiter();
@@ -78,6 +80,7 @@ describe('notification routes', () => {
         queuePublisher,
       ),
       getNotificationMetricsUseCase: new GetNotificationMetricsUseCase(notificationRepository),
+      listDeliveryAttemptsUseCase: new ListDeliveryAttemptsUseCase(notificationRepository),
       listNotificationsUseCase: new ListNotificationsUseCase(notificationRepository),
     });
   });
@@ -242,6 +245,121 @@ describe('notification routes', () => {
     });
   });
 
+  it('lists delivery attempts for a tenant notification', async () => {
+    const apiKey = await createTenantAndGetApiKey(app);
+    const notificationId = await createNotification(app, apiKey, {
+      idempotencyKey: 'attempt-history-1',
+      payload: {
+        channel: 'email',
+        recipient: 'user@example.com',
+        body: 'Hello',
+      },
+    });
+    const notification = notificationRepository.notifications.get(notificationId);
+
+    if (!notification) {
+      throw new Error('Expected notification to be created.');
+    }
+
+    await notificationRepository.recordDeliveryAttempt({
+      notificationId,
+      tenantId: notification.tenantId,
+      channel: 'email',
+      provider: 'mock-email',
+      status: 'processing',
+      attemptNumber: 1,
+      providerMessageId: null,
+      errorCode: null,
+      errorMessage: null,
+      responseMetadata: {},
+      startedAt: new Date('2026-07-20T04:59:00.000Z'),
+      completedAt: null,
+    });
+    await notificationRepository.recordDeliveryAttempt({
+      notificationId,
+      tenantId: notification.tenantId,
+      channel: 'email',
+      provider: 'mock-email',
+      status: 'delivered',
+      attemptNumber: 1,
+      providerMessageId: 'provider-message-1',
+      errorCode: null,
+      errorMessage: null,
+      responseMetadata: {
+        accepted: true,
+      },
+      startedAt: new Date('2026-07-20T05:00:00.000Z'),
+      completedAt: new Date('2026-07-20T05:00:01.000Z'),
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/v1/notifications/${notificationId}/delivery-attempts?limit=10&offset=0`,
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      deliveryAttempts: [
+        {
+          notificationId,
+          channel: 'email',
+          provider: 'mock-email',
+          status: 'delivered',
+          attemptNumber: 1,
+          providerMessageId: 'provider-message-1',
+          responseMetadata: {
+            accepted: true,
+          },
+          completedAt: '2026-07-20T05:00:01.000Z',
+        },
+        {
+          notificationId,
+          channel: 'email',
+          provider: 'mock-email',
+          status: 'processing',
+          attemptNumber: 1,
+          completedAt: null,
+        },
+      ],
+      pagination: {
+        limit: 10,
+        offset: 0,
+        total: 2,
+      },
+    });
+  });
+
+  it('returns 404 when listing attempts for another tenant notification', async () => {
+    const firstApiKey = await createTenantAndGetApiKey(app);
+    const secondApiKey = await createTenantAndGetApiKey(app);
+    const notificationId = await createNotification(app, firstApiKey, {
+      idempotencyKey: 'attempt-cross-tenant-1',
+      payload: {
+        channel: 'sms',
+        recipient: '+15555550123',
+        body: 'Hello',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/v1/notifications/${notificationId}/delivery-attempts`,
+      headers: {
+        'x-api-key': secondApiKey,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({
+      error: {
+        code: 'NOTIFICATION_NOT_FOUND',
+      },
+    });
+  });
+
   it('creates a template and renders a notification from it', async () => {
     const apiKey = await createTenantAndGetApiKey(app);
     const templateResponse = await app.inject({
@@ -353,8 +471,8 @@ async function createNotification(
     idempotencyKey: string;
     payload: Record<string, unknown>;
   },
-): Promise<void> {
-  await app.inject({
+): Promise<string> {
+  const response = await app.inject({
     method: 'POST',
     url: '/v1/notifications',
     headers: {
@@ -363,4 +481,6 @@ async function createNotification(
     },
     payload: params.payload,
   });
+
+  return response.json<{ notification: { id: string } }>().notification.id;
 }

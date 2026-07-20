@@ -17,9 +17,14 @@ import type {
 } from '../../application/create-notification-use-case.js';
 import type { GetNotificationMetricsUseCase } from '../../application/get-notification-metrics-use-case.js';
 import type {
+  ListDeliveryAttemptsQuery,
+  ListDeliveryAttemptsUseCase,
+} from '../../application/list-delivery-attempts-use-case.js';
+import type {
   ListNotificationsQuery,
   ListNotificationsUseCase,
 } from '../../application/list-notifications-use-case.js';
+import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
 import type { Notification } from '../../domain/notification.js';
 import type { NotificationTemplate } from '../../domain/notification-template.js';
 
@@ -28,6 +33,7 @@ type RegisterNotificationRoutesDependencies = {
   createNotificationTemplateUseCase: CreateNotificationTemplateUseCase;
   createNotificationUseCase: CreateNotificationUseCase;
   getNotificationMetricsUseCase: GetNotificationMetricsUseCase;
+  listDeliveryAttemptsUseCase: ListDeliveryAttemptsUseCase;
   listNotificationsUseCase: ListNotificationsUseCase;
 };
 
@@ -85,6 +91,37 @@ export function registerNotificationRoutes(
 
       return {
         notifications: result.items.map(serializeNotification),
+        pagination: result.pagination,
+      };
+    },
+  );
+
+  app.get<{
+    Params: { notificationId: string };
+    Querystring: ListDeliveryAttemptsQuery;
+  }>(
+    '/v1/notifications/:notificationId/delivery-attempts',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Delivery Attempts'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        params: notificationIdParamsSchema,
+        querystring: listDeliveryAttemptsQuerySchema,
+        response: {
+          200: listDeliveryAttemptsResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const result = await dependencies.listDeliveryAttemptsUseCase.execute({
+        principal: requireAuth(request),
+        notificationId: request.params.notificationId,
+        query: request.query,
+      });
+
+      return {
+        deliveryAttempts: result.items.map(serializeDeliveryAttempt),
         pagination: result.pagination,
       };
     },
@@ -199,6 +236,32 @@ function serializeTemplate(template: NotificationTemplate): Record<string, unkno
   };
 }
 
+function serializeDeliveryAttempt(attempt: DeliveryAttempt): Record<string, unknown> {
+  return {
+    id: attempt.id,
+    notificationId: attempt.notificationId,
+    tenantId: attempt.tenantId,
+    channel: attempt.channel,
+    provider: attempt.provider,
+    status: attempt.status,
+    attemptNumber: attempt.attemptNumber,
+    providerMessageId: attempt.providerMessageId,
+    errorCode: attempt.errorCode,
+    errorMessage: attempt.errorMessage,
+    responseMetadata: attempt.responseMetadata,
+    startedAt: attempt.startedAt.toISOString(),
+    completedAt: attempt.completedAt?.toISOString() ?? null,
+  };
+}
+
+const notificationIdParamsSchema = {
+  type: 'object',
+  required: ['notificationId'],
+  properties: {
+    notificationId: { type: 'string', format: 'uuid' },
+  },
+} as const;
+
 const notificationHeadersSchema = {
   type: 'object',
   properties: {
@@ -299,6 +362,69 @@ const listNotificationsResponseSchema = {
     notifications: {
       type: 'array',
       items: notificationSchema,
+    },
+    pagination: {
+      type: 'object',
+      required: ['limit', 'offset', 'total'],
+      properties: {
+        limit: { type: 'integer' },
+        offset: { type: 'integer' },
+        total: { type: 'integer' },
+      },
+    },
+  },
+} as const;
+
+const deliveryAttemptSchema = {
+  type: 'object',
+  required: [
+    'id',
+    'notificationId',
+    'tenantId',
+    'channel',
+    'provider',
+    'status',
+    'attemptNumber',
+    'providerMessageId',
+    'errorCode',
+    'errorMessage',
+    'responseMetadata',
+    'startedAt',
+    'completedAt',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    notificationId: { type: 'string', format: 'uuid' },
+    tenantId: { type: 'string', format: 'uuid' },
+    channel: { type: 'string', enum: ['email', 'sms', 'push', 'webhook'] },
+    provider: { type: 'string' },
+    status: { type: 'string', enum: ['processing', 'delivered', 'failed'] },
+    attemptNumber: { type: 'integer' },
+    providerMessageId: { type: ['string', 'null'] },
+    errorCode: { type: ['string', 'null'] },
+    errorMessage: { type: ['string', 'null'] },
+    responseMetadata: { type: 'object', additionalProperties: true },
+    startedAt: { type: 'string', format: 'date-time' },
+    completedAt: { type: ['string', 'null'], format: 'date-time' },
+  },
+} as const;
+
+const listDeliveryAttemptsQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+  },
+} as const;
+
+const listDeliveryAttemptsResponseSchema = {
+  type: 'object',
+  required: ['deliveryAttempts', 'pagination'],
+  properties: {
+    deliveryAttempts: {
+      type: 'array',
+      items: deliveryAttemptSchema,
     },
     pagination: {
       type: 'object',

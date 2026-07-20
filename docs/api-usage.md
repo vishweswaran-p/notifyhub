@@ -135,6 +135,15 @@ curl http://localhost:3000/v1/analytics/notifications \
 
 The analytics response includes totals by notification status, channel, and delivery attempt outcome.
 
+List delivery attempts for a notification:
+
+```bash
+curl 'http://localhost:3000/v1/notifications/<notification-id>/delivery-attempts?limit=25&offset=0' \
+  -H 'x-api-key: <api-key>'
+```
+
+The response includes provider name, attempt number, status, provider message id, error details, provider response metadata, and start/completion timestamps.
+
 ## Audit Logs
 
 List tenant audit logs:

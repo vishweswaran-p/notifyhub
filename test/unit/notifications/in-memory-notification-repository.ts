@@ -6,6 +6,8 @@ import type {
   ClaimDueScheduledInput,
   CreateNotificationInput,
   GetTenantNotificationMetricsInput,
+  ListDeliveryAttemptsInput,
+  ListDeliveryAttemptsResult,
   ListNotificationsInput,
   ListNotificationsResult,
   NotificationRepository,
@@ -126,6 +128,30 @@ export class InMemoryNotificationRepository implements NotificationRepository {
         delivered: deliveryAttempts.filter((attempt) => attempt.status === 'delivered').length,
         failed: deliveryAttempts.filter((attempt) => attempt.status === 'failed').length,
       },
+    });
+  }
+
+  public listDeliveryAttempts(
+    input: ListDeliveryAttemptsInput,
+  ): Promise<ListDeliveryAttemptsResult> {
+    const filtered = this.deliveryAttempts
+      .filter(
+        (attempt) =>
+          attempt.tenantId === input.tenantId && attempt.notificationId === input.notificationId,
+      )
+      .sort((left, right) => {
+        const startedAtDifference = right.startedAt.getTime() - left.startedAt.getTime();
+
+        return (
+          startedAtDifference ||
+          right.attemptNumber - left.attemptNumber ||
+          right.id.localeCompare(left.id)
+        );
+      });
+
+    return Promise.resolve({
+      items: filtered.slice(input.offset, input.offset + input.limit),
+      total: filtered.length,
     });
   }
 

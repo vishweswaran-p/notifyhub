@@ -6,6 +6,8 @@ import type {
   ClaimDueScheduledInput,
   CreateNotificationInput,
   GetTenantNotificationMetricsInput,
+  ListDeliveryAttemptsInput,
+  ListDeliveryAttemptsResult,
   ListNotificationsInput,
   ListNotificationsResult,
   NotificationRepository,
@@ -246,6 +248,48 @@ export class PostgresNotificationRepository implements NotificationRepository {
         delivered: Number(requireSingleRow(deliveryAttemptsResult.rows).delivered),
         failed: Number(requireSingleRow(deliveryAttemptsResult.rows).failed),
       },
+    };
+  }
+
+  public async listDeliveryAttempts(
+    input: ListDeliveryAttemptsInput,
+  ): Promise<ListDeliveryAttemptsResult> {
+    const totalResult = await this.pool.query<CountRow>(
+      `
+        select count(*) as count
+        from delivery_attempts
+        where tenant_id = $1 and notification_id = $2
+      `,
+      [input.tenantId, input.notificationId],
+    );
+    const attemptsResult = await this.pool.query<DeliveryAttemptRow>(
+      `
+        select
+          id,
+          notification_id,
+          tenant_id,
+          channel,
+          provider,
+          status,
+          attempt_number,
+          provider_message_id,
+          error_code,
+          error_message,
+          response_metadata,
+          started_at,
+          completed_at
+        from delivery_attempts
+        where tenant_id = $1 and notification_id = $2
+        order by started_at desc, attempt_number desc, id desc
+        limit $3
+        offset $4
+      `,
+      [input.tenantId, input.notificationId, input.limit, input.offset],
+    );
+
+    return {
+      items: attemptsResult.rows.map(mapDeliveryAttemptRow),
+      total: Number(requireSingleRow(totalResult.rows).count),
     };
   }
 
