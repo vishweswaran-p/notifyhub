@@ -1,12 +1,14 @@
 import type { Pool, PoolClient } from 'pg';
 
 import type { ApiKey } from '../../domain/api-key.js';
-import type { AuditLogInput } from '../../domain/audit-log.js';
+import type { AuditLog, AuditLogInput } from '../../domain/audit-log.js';
 import type { Tenant } from '../../domain/tenant.js';
 import type {
   CreatedTenantCredentials,
   CreateTenantInput,
   IdentityRepository,
+  ListAuditLogsInput,
+  ListAuditLogsResult,
 } from '../../application/identity-repository.js';
 
 type TenantRow = {
@@ -30,6 +32,22 @@ type ApiKeyRow = {
   expires_at: Date | null;
   created_at: Date;
   revoked_at: Date | null;
+};
+
+type AuditLogRow = {
+  id: string;
+  tenant_id: string | null;
+  actor_type: AuditLog['actorType'];
+  actor_id: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  metadata: Record<string, unknown>;
+  created_at: Date;
+};
+
+type CountRow = {
+  count: string;
 };
 
 export class PostgresIdentityRepository implements IdentityRepository {
@@ -115,6 +133,58 @@ export class PostgresIdentityRepository implements IdentityRepository {
     return result.rows.map(mapApiKeyRow);
   }
 
+  public async listAuditLogs(input: ListAuditLogsInput): Promise<ListAuditLogsResult> {
+    const filters = ['tenant_id = $1'];
+    const values: unknown[] = [input.tenantId];
+
+    if (input.actorType) {
+      values.push(input.actorType);
+      filters.push(`actor_type = $${values.length}`);
+    }
+
+    if (input.action) {
+      values.push(input.action);
+      filters.push(`action = $${values.length}`);
+    }
+
+    if (input.resourceType) {
+      values.push(input.resourceType);
+      filters.push(`resource_type = $${values.length}`);
+    }
+
+    const whereClause = filters.join(' and ');
+    const totalResult = await this.pool.query<CountRow>(
+      `select count(*) as count from audit_logs where ${whereClause}`,
+      values,
+    );
+    const listValues = [...values, input.limit, input.offset];
+    const itemsResult = await this.pool.query<AuditLogRow>(
+      `
+        select
+          id,
+          tenant_id,
+          actor_type,
+          actor_id,
+          action,
+          resource_type,
+          resource_id,
+          metadata,
+          created_at
+        from audit_logs
+        where ${whereClause}
+        order by created_at desc, id desc
+        limit $${values.length + 1}
+        offset $${values.length + 2}
+      `,
+      listValues,
+    );
+
+    return {
+      items: itemsResult.rows.map(mapAuditLogRow),
+      total: Number(requireSingleRow(totalResult.rows).count),
+    };
+  }
+
   public async markApiKeyUsed(id: string, usedAt: Date): Promise<void> {
     await this.pool.query('update api_keys set last_used_at = $2 where id = $1', [id, usedAt]);
   }
@@ -184,5 +254,19 @@ function mapApiKeyRow(row: ApiKeyRow): ApiKey {
     expiresAt: row.expires_at,
     createdAt: row.created_at,
     revokedAt: row.revoked_at,
+  };
+}
+
+function mapAuditLogRow(row: AuditLogRow): AuditLog {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    actorType: row.actor_type,
+    actorId: row.actor_id,
+    action: row.action,
+    resourceType: row.resource_type,
+    resourceId: row.resource_id,
+    metadata: row.metadata,
+    createdAt: row.created_at,
   };
 }

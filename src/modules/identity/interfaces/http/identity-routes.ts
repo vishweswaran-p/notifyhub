@@ -7,6 +7,11 @@ import type {
 } from '../../application/create-tenant-use-case.js';
 import type { GetCurrentTenantUseCase } from '../../application/get-current-tenant-use-case.js';
 import type { IdentityRepository } from '../../application/identity-repository.js';
+import type {
+  ListAuditLogsQuery,
+  ListAuditLogsUseCase,
+} from '../../application/list-audit-logs-use-case.js';
+import type { AuditLog } from '../../domain/audit-log.js';
 import { createRequireApiKey, createRequireTenantAuth, requireAuth } from './auth-hooks.js';
 
 type RegisterIdentityRoutesDependencies = {
@@ -14,6 +19,7 @@ type RegisterIdentityRoutesDependencies = {
   createTenantUseCase: CreateTenantUseCase;
   getCurrentTenantUseCase: GetCurrentTenantUseCase;
   identityRepository: IdentityRepository;
+  listAuditLogsUseCase: ListAuditLogsUseCase;
   jwtExpiresInSeconds: number;
 };
 
@@ -123,6 +129,32 @@ export function registerIdentityRoutes(
       };
     },
   );
+
+  app.get<{ Querystring: ListAuditLogsQuery }>(
+    '/v1/audit-logs',
+    {
+      preHandler: requireTenantAuth,
+      schema: {
+        tags: ['Audit Logs'],
+        security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }],
+        querystring: listAuditLogsQuerySchema,
+        response: {
+          200: listAuditLogsResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const result = await dependencies.listAuditLogsUseCase.execute({
+        principal: requireAuth(request),
+        query: request.query,
+      });
+
+      return {
+        auditLogs: result.items.map(serializeAuditLog),
+        pagination: result.pagination,
+      };
+    },
+  );
 }
 
 function serializeTenant(tenant: {
@@ -142,6 +174,20 @@ function serializeTenant(tenant: {
     rateLimitPerMinute: tenant.rateLimitPerMinute,
     createdAt: tenant.createdAt.toISOString(),
     updatedAt: tenant.updatedAt.toISOString(),
+  };
+}
+
+function serializeAuditLog(auditLog: AuditLog): Record<string, unknown> {
+  return {
+    id: auditLog.id,
+    tenantId: auditLog.tenantId,
+    actorType: auditLog.actorType,
+    actorId: auditLog.actorId,
+    action: auditLog.action,
+    resourceType: auditLog.resourceType,
+    resourceId: auditLog.resourceId,
+    metadata: auditLog.metadata,
+    createdAt: auditLog.createdAt.toISOString(),
   };
 }
 
@@ -210,5 +256,63 @@ const currentTenantResponseSchema = {
   required: ['tenant'],
   properties: {
     tenant: tenantSchema,
+  },
+} as const;
+
+const auditLogSchema = {
+  type: 'object',
+  required: [
+    'id',
+    'tenantId',
+    'actorType',
+    'actorId',
+    'action',
+    'resourceType',
+    'resourceId',
+    'metadata',
+    'createdAt',
+  ],
+  properties: {
+    id: { type: 'string', format: 'uuid' },
+    tenantId: { type: ['string', 'null'], format: 'uuid' },
+    actorType: { type: 'string', enum: ['system', 'api_key', 'jwt', 'admin'] },
+    actorId: { type: ['string', 'null'] },
+    action: { type: 'string' },
+    resourceType: { type: 'string' },
+    resourceId: { type: ['string', 'null'] },
+    metadata: { type: 'object', additionalProperties: true },
+    createdAt: { type: 'string', format: 'date-time' },
+  },
+} as const;
+
+const listAuditLogsQuerySchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    limit: { type: 'integer', minimum: 1, maximum: 100, default: 25 },
+    offset: { type: 'integer', minimum: 0, default: 0 },
+    actorType: { type: 'string', enum: ['system', 'api_key', 'jwt', 'admin'] },
+    action: { type: 'string', minLength: 1, maxLength: 120 },
+    resourceType: { type: 'string', minLength: 1, maxLength: 120 },
+  },
+} as const;
+
+const listAuditLogsResponseSchema = {
+  type: 'object',
+  required: ['auditLogs', 'pagination'],
+  properties: {
+    auditLogs: {
+      type: 'array',
+      items: auditLogSchema,
+    },
+    pagination: {
+      type: 'object',
+      required: ['limit', 'offset', 'total'],
+      properties: {
+        limit: { type: 'integer' },
+        offset: { type: 'integer' },
+        total: { type: 'integer' },
+      },
+    },
   },
 } as const;

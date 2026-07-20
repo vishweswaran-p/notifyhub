@@ -9,3 +9,15 @@ export type AuditLogInput = {
   resourceId: string | null;
   metadata?: Record<string, unknown>;
 };
+
+export type AuditLog = {
+  id: string;
+  tenantId: string | null;
+  actorType: AuditActorType;
+  actorId: string | null;
+  action: string;
+  resourceType: string;
+  resourceId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: Date;
+};

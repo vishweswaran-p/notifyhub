@@ -6,6 +6,7 @@ import { ApiKeySecretService } from '../../../src/modules/identity/application/a
 import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/application/authenticate-api-key-use-case.js';
 import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
 import { GetCurrentTenantUseCase } from '../../../src/modules/identity/application/get-current-tenant-use-case.js';
+import { ListAuditLogsUseCase } from '../../../src/modules/identity/application/list-audit-logs-use-case.js';
 import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
 import { registerErrorHandler } from '../../../src/shared/http/error-handler.js';
 
@@ -30,6 +31,7 @@ describe('identity routes', () => {
       createTenantUseCase: new CreateTenantUseCase(repository, apiKeySecretService),
       getCurrentTenantUseCase: new GetCurrentTenantUseCase(repository),
       identityRepository: repository,
+      listAuditLogsUseCase: new ListAuditLogsUseCase(repository),
       jwtExpiresInSeconds: 900,
     });
   });
@@ -92,6 +94,51 @@ describe('identity routes', () => {
     expect(response.json()).toMatchObject({
       error: {
         code: 'INVALID_CREDENTIALS',
+      },
+    });
+  });
+
+  it('lists tenant audit logs with filters and pagination metadata', async () => {
+    const createResponse = await app.inject({
+      method: 'POST',
+      url: '/v1/tenants',
+      payload: {
+        name: 'Acme',
+        slug: 'audit-acme',
+      },
+    });
+    const created = createResponse.json<{
+      apiKey: { secret: string };
+    }>();
+
+    await app.inject({
+      method: 'POST',
+      url: '/v1/auth/tokens',
+      headers: {
+        'x-api-key': created.apiKey.secret,
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/v1/audit-logs?action=auth.token_issued&limit=10&offset=0',
+      headers: {
+        'x-api-key': created.apiKey.secret,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      auditLogs: [
+        {
+          action: 'auth.token_issued',
+          resourceType: 'tenant',
+        },
+      ],
+      pagination: {
+        limit: 10,
+        offset: 0,
+        total: 1,
       },
     });
   });

@@ -7,6 +7,7 @@ import { ApiKeySecretService } from '../../../src/modules/identity/application/a
 import { AuthenticateApiKeyUseCase } from '../../../src/modules/identity/application/authenticate-api-key-use-case.js';
 import { CreateTenantUseCase } from '../../../src/modules/identity/application/create-tenant-use-case.js';
 import { GetCurrentTenantUseCase } from '../../../src/modules/identity/application/get-current-tenant-use-case.js';
+import { ListAuditLogsUseCase } from '../../../src/modules/identity/application/list-audit-logs-use-case.js';
 import { registerIdentityRoutes } from '../../../src/modules/identity/interfaces/http/identity-routes.js';
 import { CreateNotificationTemplateUseCase } from '../../../src/modules/notifications/application/create-notification-template-use-case.js';
 import { CreateNotificationUseCase } from '../../../src/modules/notifications/application/create-notification-use-case.js';
@@ -60,6 +61,7 @@ describe('notification routes', () => {
       createTenantUseCase: new CreateTenantUseCase(identityRepository, apiKeySecretService),
       getCurrentTenantUseCase: new GetCurrentTenantUseCase(identityRepository),
       identityRepository,
+      listAuditLogsUseCase: new ListAuditLogsUseCase(identityRepository),
       jwtExpiresInSeconds: 900,
     });
     registerNotificationRoutes(app, {

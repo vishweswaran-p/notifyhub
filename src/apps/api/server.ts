@@ -13,6 +13,7 @@ import { ApiKeySecretService } from '../../modules/identity/application/api-key-
 import { AuthenticateApiKeyUseCase } from '../../modules/identity/application/authenticate-api-key-use-case.js';
 import { CreateTenantUseCase } from '../../modules/identity/application/create-tenant-use-case.js';
 import { GetCurrentTenantUseCase } from '../../modules/identity/application/get-current-tenant-use-case.js';
+import { ListAuditLogsUseCase } from '../../modules/identity/application/list-audit-logs-use-case.js';
 import { PostgresIdentityRepository } from '../../modules/identity/infrastructure/persistence/postgres-identity-repository.js';
 import { registerIdentityRoutes } from '../../modules/identity/interfaces/http/identity-routes.js';
 import { CreateNotificationTemplateUseCase } from '../../modules/notifications/application/create-notification-template-use-case.js';
@@ -109,6 +110,7 @@ export async function buildApiServer(config: AppConfig): Promise<FastifyInstance
     createTenantUseCase: new CreateTenantUseCase(identityRepository, apiKeySecretService),
     getCurrentTenantUseCase: new GetCurrentTenantUseCase(identityRepository),
     identityRepository,
+    listAuditLogsUseCase: new ListAuditLogsUseCase(identityRepository),
     jwtExpiresInSeconds: config.JWT_EXPIRES_IN_SECONDS,
   });
   registerNotificationRoutes(app, {

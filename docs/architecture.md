@@ -93,7 +93,14 @@ The eighth phase adds notification status and analytics reads:
 - Tenant notification metrics grouped by status and channel.
 - Delivery attempt totals for delivered and failed provider attempts.
 
-Additional analytics dimensions and dashboard-oriented projections can be implemented after this read foundation is stable.
+The ninth phase adds audit log reads:
+
+- Tenant-authenticated `GET /v1/audit-logs`.
+- Pagination with `limit` and `offset`.
+- Filtering by `actorType`, `action`, and `resourceType`.
+- Tenant scoping so API clients cannot read cross-tenant audit history.
+
+Queue monitoring and additional analytics dimensions can be implemented after this read foundation is stable.
 
 ## Identity Flow
 

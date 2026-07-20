@@ -1,18 +1,20 @@
 import { randomUUID } from 'node:crypto';
 
 import type { ApiKey } from '../../../src/modules/identity/domain/api-key.js';
-import type { AuditLogInput } from '../../../src/modules/identity/domain/audit-log.js';
+import type { AuditLog, AuditLogInput } from '../../../src/modules/identity/domain/audit-log.js';
 import type { Tenant } from '../../../src/modules/identity/domain/tenant.js';
 import type {
   CreatedTenantCredentials,
   CreateTenantInput,
   IdentityRepository,
+  ListAuditLogsInput,
+  ListAuditLogsResult,
 } from '../../../src/modules/identity/application/identity-repository.js';
 
 export class InMemoryIdentityRepository implements IdentityRepository {
   public readonly tenants = new Map<string, Tenant>();
   public readonly apiKeys = new Map<string, ApiKey>();
-  public readonly auditLogs: AuditLogInput[] = [];
+  public readonly auditLogs: AuditLog[] = [];
 
   public createTenantWithApiKey(input: CreateTenantInput): Promise<CreatedTenantCredentials> {
     const now = new Date();
@@ -67,8 +69,36 @@ export class InMemoryIdentityRepository implements IdentityRepository {
     return Promise.resolve();
   }
 
+  public listAuditLogs(input: ListAuditLogsInput): Promise<ListAuditLogsResult> {
+    const filtered = this.auditLogs
+      .filter((auditLog) => auditLog.tenantId === input.tenantId)
+      .filter((auditLog) => !input.actorType || auditLog.actorType === input.actorType)
+      .filter((auditLog) => !input.action || auditLog.action === input.action)
+      .filter((auditLog) => !input.resourceType || auditLog.resourceType === input.resourceType)
+      .sort((left, right) => {
+        const createdAtDifference = right.createdAt.getTime() - left.createdAt.getTime();
+
+        return createdAtDifference || right.id.localeCompare(left.id);
+      });
+
+    return Promise.resolve({
+      items: filtered.slice(input.offset, input.offset + input.limit),
+      total: filtered.length,
+    });
+  }
+
   public recordAuditLog(input: AuditLogInput): Promise<void> {
-    this.auditLogs.push(input);
+    this.auditLogs.push({
+      id: randomUUID(),
+      tenantId: input.tenantId,
+      actorType: input.actorType,
+      actorId: input.actorId,
+      action: input.action,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      metadata: input.metadata ?? {},
+      createdAt: new Date(),
+    });
 
     return Promise.resolve();
   }
