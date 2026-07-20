@@ -12,6 +12,8 @@ describe('loadConfig', () => {
     expect(config.JWT_EXPIRES_IN_SECONDS).toBe(900);
     expect(config.DELIVERY_MAX_ATTEMPTS).toBe(3);
     expect(config.DELIVERY_RETRY_BACKOFF_MS).toBe(5000);
+    expect(config.SCHEDULER_POLL_INTERVAL_MS).toBe(5000);
+    expect(config.SCHEDULER_BATCH_SIZE).toBe(100);
   });
 
   it('rejects default secrets in production', () => {

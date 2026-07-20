@@ -3,6 +3,7 @@ import type { Pool } from 'pg';
 import type { DeliveryAttempt } from '../../domain/delivery-attempt.js';
 import type { Notification } from '../../domain/notification.js';
 import type {
+  ClaimDueScheduledInput,
   CreateNotificationInput,
   GetTenantNotificationMetricsInput,
   ListNotificationsInput,
@@ -129,6 +130,32 @@ export class PostgresNotificationRepository implements NotificationRepository {
     );
 
     return mapNotificationRow(requireSingleRow(result.rows));
+  }
+
+  public async claimDueScheduled(input: ClaimDueScheduledInput): Promise<Notification[]> {
+    const result = await this.pool.query<NotificationRow>(
+      `
+        update notifications
+        set
+          status = 'queued',
+          queued_at = $1,
+          updated_at = now()
+        where id in (
+          select id
+          from notifications
+          where status = 'scheduled'
+            and scheduled_at is not null
+            and scheduled_at <= $1
+          order by scheduled_at asc, created_at asc, id asc
+          limit $2
+          for update skip locked
+        )
+        returning ${notificationColumns}
+      `,
+      [input.now, input.limit],
+    );
+
+    return result.rows.map(mapNotificationRow);
   }
 
   public async listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {
@@ -258,7 +285,7 @@ export class PostgresNotificationRepository implements NotificationRepository {
       id,
       tenantId,
       status: 'processing',
-      allowedStatuses: ['queued', 'scheduled', 'failed'],
+      allowedStatuses: ['queued', 'failed'],
     });
   }
 

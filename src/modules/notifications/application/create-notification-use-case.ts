@@ -78,7 +78,7 @@ export class CreateNotificationUseCase {
 
     const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
     const now = new Date();
-    const shouldDelay = scheduledAt !== null && scheduledAt.getTime() > now.getTime();
+    const isFutureScheduled = scheduledAt !== null && scheduledAt.getTime() > now.getTime();
     const renderedContent = await this.resolveContent({
       tenantId: params.principal.tenantId,
       channel: input.channel,
@@ -100,19 +100,18 @@ export class CreateNotificationUseCase {
       body: renderedContent.body,
       variables: input.variables,
       metadata: input.metadata,
-      status: shouldDelay ? 'scheduled' : 'queued',
+      status: isFutureScheduled ? 'scheduled' : 'queued',
       scheduledAt,
-      queuedAt: shouldDelay ? null : now,
+      queuedAt: isFutureScheduled ? null : now,
     });
 
-    await this.queuePublisher.enqueueDelivery(
-      {
+    if (!isFutureScheduled) {
+      await this.queuePublisher.enqueueDelivery({
         notificationId: notification.id,
         tenantId: notification.tenantId,
         channel: notification.channel,
-      },
-      shouldDelay ? { delayMs: scheduledAt.getTime() - now.getTime() } : undefined,
-    );
+      });
+    }
 
     return {
       notification,

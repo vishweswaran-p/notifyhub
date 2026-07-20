@@ -46,7 +46,7 @@ Start the delivery worker in another terminal:
 npm run dev:worker
 ```
 
-Start the scheduler in another terminal when working on scheduled notification behavior:
+Start the scheduler in another terminal to promote due scheduled notifications:
 
 ```bash
 npm run dev:scheduler
@@ -124,7 +124,16 @@ NotifyHub has three runtime entrypoints:
 
 - `src/apps/api`: HTTP API, OpenAPI docs, authentication, notification intake, reads, and health checks.
 - `src/apps/worker`: BullMQ notification delivery worker.
-- `src/apps/scheduler`: scheduler process reserved for scheduled notification and recurring jobs.
+- `src/apps/scheduler`: polling scheduler that claims due scheduled notifications and enqueues delivery jobs.
+
+## Scheduler Configuration
+
+Scheduled notifications are persisted with `status = scheduled` until their `scheduledAt` timestamp is due. The scheduler process claims due rows in batches, marks them `queued`, and publishes delivery jobs to BullMQ.
+
+Configure scheduler behavior with:
+
+- `SCHEDULER_POLL_INTERVAL_MS`: how often the scheduler checks for due notifications.
+- `SCHEDULER_BATCH_SIZE`: maximum number of due notifications claimed per tick.
 
 ## Provider Behavior
 

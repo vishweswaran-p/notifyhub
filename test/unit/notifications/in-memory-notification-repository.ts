@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { DeliveryAttempt } from '../../../src/modules/notifications/domain/delivery-attempt.js';
 import type { Notification } from '../../../src/modules/notifications/domain/notification.js';
 import type {
+  ClaimDueScheduledInput,
   CreateNotificationInput,
   GetTenantNotificationMetricsInput,
   ListNotificationsInput,
@@ -43,6 +44,38 @@ export class InMemoryNotificationRepository implements NotificationRepository {
     this.notifications.set(notification.id, notification);
 
     return Promise.resolve(notification);
+  }
+
+  public claimDueScheduled(input: ClaimDueScheduledInput): Promise<Notification[]> {
+    const dueNotifications = [...this.notifications.values()]
+      .filter(
+        (notification) =>
+          notification.status === 'scheduled' &&
+          notification.scheduledAt !== null &&
+          notification.scheduledAt.getTime() <= input.now.getTime(),
+      )
+      .sort((left, right) => {
+        const scheduledAtDifference =
+          (left.scheduledAt?.getTime() ?? 0) - (right.scheduledAt?.getTime() ?? 0);
+
+        return scheduledAtDifference || left.id.localeCompare(right.id);
+      })
+      .slice(0, input.limit);
+
+    const claimed = dueNotifications.map((notification) => {
+      const updated: Notification = {
+        ...notification,
+        status: 'queued',
+        queuedAt: input.now,
+        updatedAt: input.now,
+      };
+
+      this.notifications.set(notification.id, updated);
+
+      return updated;
+    });
+
+    return Promise.resolve(claimed);
   }
 
   public listForTenant(input: ListNotificationsInput): Promise<ListNotificationsResult> {
@@ -116,9 +149,7 @@ export class InMemoryNotificationRepository implements NotificationRepository {
   }
 
   public markProcessing(id: string, tenantId: string): Promise<Notification | null> {
-    return Promise.resolve(
-      this.updateStatus(id, tenantId, 'processing', ['queued', 'scheduled', 'failed']),
-    );
+    return Promise.resolve(this.updateStatus(id, tenantId, 'processing', ['queued', 'failed']));
   }
 
   public markDelivered(id: string, tenantId: string): Promise<Notification | null> {

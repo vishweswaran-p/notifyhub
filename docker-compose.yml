@@ -42,6 +42,8 @@ services:
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
       DELIVERY_MAX_ATTEMPTS: 3
       DELIVERY_RETRY_BACKOFF_MS: 5000
+      SCHEDULER_POLL_INTERVAL_MS: 5000
+      SCHEDULER_BATCH_SIZE: 100
       CORS_ORIGIN: '*'
     ports:
       - '3000:3000'
@@ -67,6 +69,8 @@ services:
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
       DELIVERY_MAX_ATTEMPTS: 3
       DELIVERY_RETRY_BACKOFF_MS: 5000
+      SCHEDULER_POLL_INTERVAL_MS: 5000
+      SCHEDULER_BATCH_SIZE: 100
     depends_on:
       postgres:
         condition: service_healthy
@@ -89,6 +93,8 @@ services:
       API_KEY_PEPPER: local-compose-api-key-pepper-change-before-production
       DELIVERY_MAX_ATTEMPTS: 3
       DELIVERY_RETRY_BACKOFF_MS: 5000
+      SCHEDULER_POLL_INTERVAL_MS: 5000
+      SCHEDULER_BATCH_SIZE: 100
     depends_on:
       postgres:
         condition: service_healthy

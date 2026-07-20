@@ -23,6 +23,8 @@ const environmentSchema = z
     API_KEY_PEPPER: z.string().min(32).default(defaultDevelopmentApiKeyPepper),
     DELIVERY_MAX_ATTEMPTS: z.coerce.number().int().positive().max(20).default(3),
     DELIVERY_RETRY_BACKOFF_MS: z.coerce.number().int().positive().default(5_000),
+    SCHEDULER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
+    SCHEDULER_BATCH_SIZE: z.coerce.number().int().positive().max(500).default(100),
     CORS_ORIGIN: z.string().default('*'),
   })
   .superRefine((env, context) => {

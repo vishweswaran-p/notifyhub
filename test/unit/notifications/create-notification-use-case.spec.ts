@@ -79,7 +79,7 @@ describe('CreateNotificationUseCase', () => {
     expect(rateLimiter.inputs).toHaveLength(1);
   });
 
-  it('delays scheduled notification jobs', async () => {
+  it('stores future scheduled notifications without enqueueing delivery', async () => {
     const { queuePublisher, useCase } = createHarness();
     const scheduledAt = new Date(Date.now() + 60_000).toISOString();
 
@@ -96,7 +96,7 @@ describe('CreateNotificationUseCase', () => {
 
     expect(result.notification.status).toBe('scheduled');
     expect(result.notification.queuedAt).toBeNull();
-    expect(queuePublisher.jobs[0]?.delayMs).toBeGreaterThan(0);
+    expect(queuePublisher.jobs).toHaveLength(0);
   });
 
   it('renders notification content from a template and variables', async () => {
